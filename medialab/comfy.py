@@ -4,7 +4,7 @@ ComfyUI is shared with other tools, so this client only ever touches prompt ids 
 exact output-filename match): history is deleted by id, a queued job is removed by id, and a running job is
 interrupted only after /queue shows it is ours.
 
-The base URL comes from `configure(cfg)` (server start) or, until then, MEDIA_LAB_COMFY_URL / COMFY_URL.
+The base URL comes from `configure(cfg)` (server start) or, until then, YOURCONTENT_COMFY_URL (or MEDIA_LAB_COMFY_URL) / COMFY_URL.
 """
 from __future__ import annotations
 
@@ -18,6 +18,8 @@ import urllib.request
 import uuid
 from typing import Callable
 
+from . import config
+
 DEFAULT_URL = "http://127.0.0.1:8188"
 CLIENT_ID = "media-lab"
 OUTPUT_KEYS = ("images", "gifs", "audio")
@@ -26,7 +28,7 @@ LOST_POLLS = 3      # polls in a row on which ComfyUI answers but has the prompt
 DOWN_LIMIT = 60.0   # seconds ComfyUI may stay unreachable during a job before the job is given up
 INFO_TTL = 30.0     # object_info cache lifetime
 
-_base = (os.environ.get("MEDIA_LAB_COMFY_URL") or os.environ.get("COMFY_URL") or DEFAULT_URL).rstrip("/")
+_base = (config.env("COMFY_URL") or os.environ.get("COMFY_URL") or DEFAULT_URL).rstrip("/")
 _info_cache: dict[str, tuple[float, dict]] = {}
 _lock = threading.Lock()
 # Called as on_submit(pid, kind) right after /prompt returns, so a crash still leaves the pid in the ledger

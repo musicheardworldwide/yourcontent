@@ -26,6 +26,7 @@ import urllib.parse
 import urllib.request
 
 from . import graphs
+from .config import env as config_env
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 MANIFEST_PATH = os.path.join(HERE, "models.manifest.json")
@@ -133,9 +134,9 @@ def wanted(models, sets, variant: str | None = None) -> dict[str, dict[str, set[
             if variant and variant not in models.image_variants():
                 raise ValueError(f"no picture variant {variant!r} (have: {', '.join(models.image_variants())})")
             vid = variant or models.default_variant
-            g = graphs.image_graph(models.variant(vid), "test", "", 1024, 1024, 4, 1, ["example.png"], "media_lab/img")
+            g = graphs.image_graph(models.variant(vid), "test", "", 1024, 1024, 4, 1, ["example.png"], "yourcontent/img")
         elif s == "clips":
-            g = graphs.video_graph(models.video, "example.png", "test", 832, 480, 49, 1, "media_lab/clip")
+            g = graphs.video_graph(models.video, "example.png", "test", 832, 480, 49, 1, "yourcontent/clip")
         elif s == "music":
             g = graphs.music_graph(models.music, "test", "", 120, 10.0, 1, saver="SaveAudio")
         else:
@@ -235,7 +236,7 @@ def fetch(man: dict, name: str, models_dir: str, *, endpoint: str | None = None,
                 for chunk in iter(lambda: pf.read(CHUNK), b""):
                     h.update(chunk)
     if have < f["bytes"]:
-        req = urllib.request.Request(url_for(man, name, endpoint), headers={"User-Agent": "media-lab-get-models"})
+        req = urllib.request.Request(url_for(man, name, endpoint), headers={"User-Agent": "yourcontent-get-models"})
         if token:
             req.add_header("Authorization", f"Bearer {token}")
         if have:
@@ -346,7 +347,7 @@ def run(models, sets, models_dir: str, *, check: bool = False, dry_run: bool = F
 def main(args) -> int:
     from . import models as models_mod
     sets = list(SETS) if args.set in (None, "all") else [args.set]
-    models_dir = args.models_dir or os.environ.get("MEDIA_LAB_MODELS_DIR")
+    models_dir = args.models_dir or config_env("MODELS_DIR")
     if not models_dir:
         print("get-models: --models-dir is required (ComfyUI's models/ folder)", file=sys.stderr)
         return 2

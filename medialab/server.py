@@ -132,7 +132,7 @@ def _host_ok(cfg, host: str) -> bool:
 
 
 def _client_ip(h) -> str:
-    """The socket peer; behind a MEDIA_LAB_TRUSTED_PROXY, the address that proxy appended to X-Forwarded-For
+    """The socket peer; behind a YOURCONTENT_TRUSTED_PROXY, the address that proxy appended to X-Forwarded-For
     (the last entry: anything to its left was sent by the client and is not trusted)."""
     peer = h.client_address[0] if h.client_address else "?"
     cfg = getattr(getattr(h.server, "state", None), "cfg", None)
@@ -209,7 +209,7 @@ def guard(h: BaseHTTPRequestHandler, method: str) -> None:
         raise HTTPError(405, "method not allowed")
     host = h.headers.get("Host") or ""
     if not _host_ok(cfg, host):
-        raise HTTPError(403, "this address isn't allowed; add it to MEDIA_LAB_ALLOWED_HOSTS")
+        raise HTTPError(403, "this address isn't allowed; add it to YOURCONTENT_ALLOWED_HOSTS")
     path = h.path.partition("?")[0]
     if method == "POST":
         ctype = (h.headers.get("Content-Type") or "").split(";")[0].strip().lower()
@@ -568,10 +568,14 @@ def r_config(h, m):
     cfg = state.cfg
     from . import graphs
     models = state.load_models()
-    variants, default, aliases, lic = {}, None, {}, []
+    variants, default, aliases, lic, info = {}, None, {}, [], {}
     if models is not None:
         try:
             variants = {vid: v.get("label", vid) for vid, v in models.image_variants().items()}
+            for vid, v in models.image_variants().items():
+                L = models.licence(v.get("licence")) if callable(getattr(models, "licence", None)) else {}
+                info[vid] = {"model": v.get("model") or "Qwen-Image 2.1", "refs": graphs.max_refs(v),
+                             "steps": v.get("steps") or 30, "commercial_ok": L.get("commercial_ok")}
             default = models.default_variant
             data = getattr(models, "data", None)
             al = data.get("aliases") if isinstance(data, dict) else getattr(models, "aliases", None)
@@ -596,7 +600,7 @@ def r_config(h, m):
         presets.append(row)
     _json(h, 200, {"app": "YourContent", "version": VERSION, "auth": bool(cfg.token), "consent_version": 1,
                    **config_mod.reach(cfg),
-                   "variants": variants, "default_variant": default, "aliases": aliases,
+                   "variants": variants, "default_variant": default, "aliases": aliases, "variant_info": info,
                    "sizes": list(graphs.SIZES), "presets": presets,
                    "limits": {"image_mb": cfg.max_image_mb, "video_mb": cfg.max_video_mb,
                               "audio_mb": cfg.max_audio_mb},
@@ -773,6 +777,10 @@ def r_generate(h, m):
     if models is not None and not models.known(vid):
         raise HTTPError(400, f"unknown model {str(vid)[:60]!r}: use one of {', '.join(models.image_variants())}")
     from . import graphs
+    if refs and models is not None and callable(getattr(models, "variant", None)):
+        v = models.variant(vid)
+        if not graphs.max_refs(v):
+            raise HTTPError(400, f"{v['model']} takes no reference pictures: remove them, or pick Qwen-Image 2.1")
     size = body.get("size") or "square"
     if size != "match" and size not in graphs.SIZES:
         raise HTTPError(400, f"size must be one of {', '.join(graphs.SIZES)} or match")
@@ -836,7 +844,7 @@ def r_music(h, m):
 def _audit(h, action: str, what: str, outcome: str) -> None:
     """One stderr line per delete (docker logs keeps it): UTC time, what, the client address, the outcome."""
     when = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-    print(f"media-lab: audit {when} {action} {what} client={_client_ip(h)} {outcome}", file=sys.stderr, flush=True)
+    print(f"yourcontent: audit {when} {action} {what} client={_client_ip(h)} {outcome}", file=sys.stderr, flush=True)
 
 
 def r_delete(h, m):
@@ -1084,7 +1092,7 @@ class Handler(BaseHTTPRequestHandler):
             code, msg = 500, "something went wrong; the server log has details"
             traceback.print_exc(file=sys.stderr)
         if code >= 500 and code != 501 and not isinstance(exc, HTTPError):
-            print(f"media-lab: {self.command} {self.path.partition('?')[0]} -> {code}", file=sys.stderr, flush=True)
+            print(f"yourcontent: {self.command} {self.path.partition('?')[0]} -> {code}", file=sys.stderr, flush=True)
         if not self._body_read and self.command == "POST":
             self.close_connection = True
         headers = {"Allow": "GET, POST"} if code == 405 else None
@@ -1136,7 +1144,7 @@ def prepare(cfg, adopt: bool | None = None) -> State:
         raise StartupError(problem)
     warning = config_mod.startup_warning(cfg)
     if warning:
-        print(f"media-lab: {warning}", file=sys.stderr, flush=True)
+        print(f"yourcontent: {warning}", file=sys.stderr, flush=True)
     try:
         store.configure(cfg)
     except OSError as exc:
@@ -1152,11 +1160,11 @@ def prepare(cfg, adopt: bool | None = None) -> State:
         try:
             res = legacy.adopt_all(cfg, store, comfy)
             n = len(res.get("adopted") or []) if isinstance(res, dict) else 0
-            print(f"media-lab: legacy files adopted this start: {n}", flush=True)
+            print(f"yourcontent: legacy files adopted this start: {n}", flush=True)
         except NotImplementedError:
-            print("media-lab: legacy adoption not available in this build", file=sys.stderr, flush=True)
+            print("yourcontent: legacy adoption not available in this build", file=sys.stderr, flush=True)
         except Exception as exc:  # noqa: BLE001 - never fatal; files stay untouched either way
-            print(f"media-lab: legacy adoption failed: {store.scrub(str(exc))}", file=sys.stderr, flush=True)
+            print(f"yourcontent: legacy adoption failed: {store.scrub(str(exc))}", file=sys.stderr, flush=True)
     return state
 
 
@@ -1170,7 +1178,7 @@ def main() -> None:
         cfg = config_mod.load()
         srv = make_server(cfg)
     except (config_mod.ConfigError, StartupError) as exc:
-        print(f"media-lab: {exc}", file=sys.stderr, flush=True)
+        print(f"yourcontent: {exc}", file=sys.stderr, flush=True)
         raise SystemExit(2) from None
     host, port = srv.server_address[:2]
     auth = "token required" if cfg.token else "no token"

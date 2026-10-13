@@ -604,7 +604,8 @@ class ActionRoutesTest(ServerCase):
         self.own("gen", "img_00001_.png", make_png())
         self.own("gen", "clip_00001.mp4", b"v", kind="clip")
         cases = [
-            ("/api/generate", {"prompt": "a red fox", "steps": 30, "refs": [{"root": "gen", "name": "img_00001_.png"}]},
+            ("/api/generate", {"prompt": "a red fox", "steps": 30,
+                               "refs": [{"root": "gen", "name": "img_00001_.png"}]},
              "generate"),
             ("/api/animate", {"start": {"root": "gen", "name": "img_00001_.png"}, "prompt": "", "seconds": "3",
                               "quality": "480p"}, "animate"),
@@ -723,7 +724,7 @@ class DeleteTest(ServerCase):
             self.assertEqual(self.req("POST", f"/api/projects/{p['id']}/delete", {})[0], 200)
         lines = [l for l in err.getvalue().splitlines() if " audit " in l]
         self.assertEqual(len(lines), 2, err.getvalue())
-        self.assertRegex(lines[0], r"^media-lab: audit \d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ delete gen/img_00001_\.png "
+        self.assertRegex(lines[0], r"^yourcontent: audit \d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ delete gen/img_00001_\.png "
                                    r"client=127\.0\.0\.1 removed=1$")
         self.assertRegex(lines[1], rf"audit \S+Z delete-project {p['id']} client=127\.0\.0\.1 removed$")
         self.assertNotIn("nope.png", err.getvalue())
@@ -991,7 +992,7 @@ class StartupTest(unittest.TestCase):
             for host in ("0.0.0.0", "192.0.2.10", "::"):
                 with self.subTest(host=host), self.assertRaises(server.StartupError) as cm:
                     server.make_server(r.config(host=host), adopt=False)
-                self.assertIn("MEDIA_LAB_TOKEN", str(cm.exception))
+                self.assertIn("YOURCONTENT_TOKEN", str(cm.exception))
             with self.assertRaises(server.StartupError):
                 server.make_server(r.config(require_token="1"), adopt=False)
             # explicit opt-out (the compose file: 0.0.0.0 inside, published on 127.0.0.1)
@@ -1006,7 +1007,7 @@ class StartupTest(unittest.TestCase):
             self.assertIsNone(config.startup_problem(r.config(host="0.0.0.0", published_host="127.0.0.1")))
             for pub in ("0.0.0.0", "192.0.2.10", "::"):
                 with self.subTest(pub=pub):
-                    self.assertIn("MEDIA_LAB_TOKEN",
+                    self.assertIn("YOURCONTENT_TOKEN",
                                   config.startup_problem(r.config(host="0.0.0.0", published_host=pub)) or "")
             self.assertIsNone(config.startup_problem(r.config(host="0.0.0.0", published_host="0.0.0.0",
                                                               token="long-enough-token")))
@@ -1017,32 +1018,44 @@ class StartupTest(unittest.TestCase):
             self.assertIsNone(config.startup_warning(r.config(host="0.0.0.0", token="long-enough-token")))
 
     def test_shipped_compose_keeps_the_token_check(self):
-        """Review r2: compose.yaml must not switch the check off, and widening MEDIA_LAB_PUBLISH must trip it."""
+        """Review r2: compose.yaml must not switch the check off, and widening YOURCONTENT_PUBLISH (or the older
+        MEDIA_LAB_PUBLISH) must trip it."""
         import re as _re
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         with open(os.path.join(root, "compose.yaml"), encoding="utf-8") as f:
             text = f.read()
         block = text.split("environment:", 1)[1].split("extra_hosts:", 1)[0]
-        raw = dict(_re.findall(r"^\s+(MEDIA_LAB_[A-Z_]+):\s*(.*?)\s*$", block, _re.M))
-        self.assertNotIn(raw.get("MEDIA_LAB_REQUIRE_TOKEN", "").strip('"'), ("0", "false", "no"))
-        self.assertIn("${MEDIA_LAB_PUBLISH:-127.0.0.1}:8190:8190", text)
+        raw = dict(_re.findall(r"^\s+((?:YOURCONTENT|MEDIA_LAB)_[A-Z_]+):\s*(.*?)\s*$", block, _re.M))
+        for k in ("YOURCONTENT_REQUIRE_TOKEN", "MEDIA_LAB_REQUIRE_TOKEN"):
+            self.assertNotIn(raw.get(k, "").strip('"'), ("0", "false", "no"))
+        self.assertIn("${YOURCONTENT_PUBLISH:-${MEDIA_LAB_PUBLISH:-127.0.0.1}}:8190:8190", text)
 
         def expand(v, env):
             while True:
-                m = _re.search(r"\$\{([A-Z_]+):-((?:[^${}]|\$\{[^}]*\})*)\}", v)
+                m = _re.search(r"\$\{([A-Z_]+):-((?:[^${}]|\$\{(?:[^${}]|\$\{[^}]*\})*\})*)\}", v)
                 if not m:
                     return v.strip('"')
                 v = v[:m.start()] + (env.get(m.group(1)) or expand(m.group(2), env)) + v[m.end():]
 
-        def startup(user_env):
+        def startup(user_env, override=None):
             with TempRoots() as r:
                 env = {k: expand(v, user_env) for k, v in raw.items()}
-                env.update(MEDIA_LAB_DATA=r.data, MEDIA_LAB_COMFY_OUTPUT=r.output, MEDIA_LAB_UPLOADS=r.uploads)
+                env.update(override or {})
+                env.update(YOURCONTENT_DATA=r.data, YOURCONTENT_COMFY_OUTPUT=r.output, YOURCONTENT_UPLOADS=r.uploads)
                 return config.startup_problem(config.load(env))
         self.assertIsNone(startup({}))
-        self.assertIn("MEDIA_LAB_TOKEN", startup({"MEDIA_LAB_PUBLISH": "0.0.0.0"}) or "")
-        self.assertIn("MEDIA_LAB_TOKEN", startup({"MEDIA_LAB_PUBLISHED_HOST": "192.0.2.10"}) or "")
-        self.assertIsNone(startup({"MEDIA_LAB_PUBLISH": "0.0.0.0", "MEDIA_LAB_TOKEN": "long-enough-token"}))
+        for pre in ("YOURCONTENT_", "MEDIA_LAB_"):
+            self.assertIn("YOURCONTENT_TOKEN", startup({pre + "PUBLISH": "0.0.0.0"}) or "")
+            self.assertIn("YOURCONTENT_TOKEN", startup({pre + "PUBLISHED_HOST": "192.0.2.10"}) or "")
+            self.assertIsNone(startup({pre + "PUBLISH": "0.0.0.0", pre + "TOKEN": "long-enough-token"}))
+        # an older compose.override.yaml that sets the old names in `environment:` still wins over the defaults
+        self.assertIsNone(startup({}, {"MEDIA_LAB_PUBLISHED_HOST": "192.0.2.10", "MEDIA_LAB_REQUIRE_TOKEN": "0"}))
+        self.assertIsNone(startup({}, {"YOURCONTENT_PUBLISHED_HOST": "192.0.2.10", "YOURCONTENT_REQUIRE_TOKEN": "0"}))
+        env = {k: expand(v, {}) for k, v in raw.items()}
+        env.update(MEDIA_LAB_COMFY_URL="http://192.0.2.5:8188")
+        self.assertEqual(config.load(env).comfy_url, "http://192.0.2.5:8188")
+        self.assertEqual(config.load({k: expand(v, {}) for k, v in raw.items()}).comfy_url,
+                         "http://host.docker.internal:8188")
 
     def test_main_exits_with_a_plain_message(self):
         with TempRoots() as r:
@@ -1080,7 +1093,7 @@ class ConfigLoadTest(unittest.TestCase):
     def test_defaults(self):
         c = config.load({})
         self.assertEqual((c.host, c.port, c.comfy_url, c.data, c.input_subdir, c.output_subdir),
-                         ("127.0.0.1", 8190, "http://127.0.0.1:8188", "./data/lab", "media_lab", "media_lab"))
+                         ("127.0.0.1", 8190, "http://127.0.0.1:8188", "./data/lab", "media_lab", "yourcontent"))
         self.assertEqual((c.token, c.require_token, c.allowed_hosts, c.adopt_legacy), (None, "auto", (), False))
         self.assertEqual((c.max_image_mb, c.max_video_mb, c.max_audio_mb, c.min_free_gb), (30, 500, 100, 2))
 

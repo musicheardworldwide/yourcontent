@@ -16,16 +16,16 @@ COPY craft/__init__.py craft/craftd.py craft/recipes.py craft/mcp_client.py craf
 COPY tests/ tests/
 # Container paths; compose mounts the real folders here. 0.0.0.0 inside the container only: compose
 # publishes the port on 127.0.0.1 unless an override says otherwise.
-ENV MEDIA_LAB_HOST=0.0.0.0 \
-    MEDIA_LAB_PORT=8190 \
-    MEDIA_LAB_DATA=/data \
-    MEDIA_LAB_COMFY_OUTPUT=/output \
-    MEDIA_LAB_UPLOADS=/uploads \
+ENV YOURCONTENT_HOST=0.0.0.0 \
+    YOURCONTENT_PORT=8190 \
+    YOURCONTENT_DATA=/data \
+    YOURCONTENT_COMFY_OUTPUT=/output \
+    YOURCONTENT_UPLOADS=/uploads \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1
 RUN mkdir -p /data /output /uploads && chown 1000:1000 /data /output /uploads
 USER 1000:1000
 EXPOSE 8190
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-  CMD ["python3", "-c", "import os,urllib.request; urllib.request.urlopen('http://127.0.0.1:%s/api/config' % os.environ.get('MEDIA_LAB_PORT', '8190'), timeout=4)"]
+  CMD ["python3", "-c", "import os,urllib.request; urllib.request.urlopen('http://127.0.0.1:%s/api/config' % os.environ.get('YOURCONTENT_PORT', '8190'), timeout=4)"]
 CMD ["python3", "app.py"]

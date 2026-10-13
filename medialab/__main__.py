@@ -24,7 +24,7 @@ from .config import Config, ConfigError, describe, load
 # Classes the shipped graphs use (§14); --dump-fixture keeps only these.
 FIXTURE_CLASSES = (
     "UNETLoader", "CLIPLoader", "DualCLIPLoader", "VAELoader", "TextEncodeQwenImage21", "EmptyLatentImage",
-    "KSampler", "KSamplerAdvanced", "VAEDecode", "SaveImage", "LoadImage", "LoraLoaderModelOnly",
+    "EmptySD3LatentImage", "KSampler", "KSamplerAdvanced", "VAEDecode", "SaveImage", "LoadImage", "LoraLoaderModelOnly",
     "ModelSamplingSD3", "ModelSamplingAuraFlow", "CLIPTextEncode", "WanImageToVideo", "VHS_VideoCombine",
     "TextEncodeAceStepAudio1.5", "EmptyAceStep1.5LatentAudio", "ConditioningZeroOut", "VAEDecodeAudio",
     "SaveAudio", "SaveAudioAdvanced",
@@ -295,7 +295,7 @@ def main(argv: list[str] | None = None) -> int:
     oa.add_argument("--md", action="store_true", help="print docs/API.md instead")
     gm = sub.add_parser("get-models", help="download the stock model files a set needs, sha256-verified")
     gm.add_argument("set", nargs="?", default="all", choices=("pictures", "clips", "music", "all"))
-    gm.add_argument("--models-dir", metavar="DIR", help="ComfyUI's models/ folder (or MEDIA_LAB_MODELS_DIR)")
+    gm.add_argument("--models-dir", metavar="DIR", help="ComfyUI's models/ folder (or YOURCONTENT_MODELS_DIR)")
     gm.add_argument("--models-json", metavar="FILE", help="a models.json to merge (default: the app's own)")
     gm.add_argument("--variant", metavar="ID", help="picture variant (default: the table's default)")
     gx = gm.add_mutually_exclusive_group()
@@ -319,7 +319,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         cfg = load()
     except ConfigError as exc:
-        print(f"media-lab: {exc}", file=sys.stderr)
+        print(f"yourcontent: {exc}", file=sys.stderr)
         return 2
     if args.cmd == "check":
         return cmd_check(cfg, args.dump_fixture)

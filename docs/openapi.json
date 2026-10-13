@@ -879,7 +879,7 @@
   "/api/generate": {
    "post": {
     "operationId": "post_api_generate",
-    "summary": "Start a picture job from a prompt (optionally up to 6 reference pictures).",
+    "summary": "Start a picture job from a prompt. The default model, Qwen-Image-2512, is text-to-image and commercial OK; reference pictures (up to 6) need variant \"bf16\" (Qwen-Image 2.1, non-commercial).",
     "responses": {
      "200": {
       "description": "JSON"
@@ -917,6 +917,9 @@
          },
          "seed": {
           "type": "integer"
+         },
+         "variant": {
+          "type": "string"
          },
          "refs": {
           "type": "array",

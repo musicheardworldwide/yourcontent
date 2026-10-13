@@ -104,7 +104,7 @@ def routes(srv) -> list[tuple[str, str, object]]:
         body = calendar.to_ics(calendar.list_entries(*_range(h)), CAL_NAME, datetime.now(timezone.utc))
         srv._send_raw(h, 200, body.encode("utf-8"), "text/calendar; charset=utf-8",
                       {"Cache-Control": "no-cache",
-                       "Content-Disposition": 'inline; filename="media-lab-calendar.ics"'})
+                       "Content-Disposition": 'inline; filename="yourcontent-calendar.ics"'})
 
     def _feed_info(h, secret):
         host = (h.headers.get("Host") or "127.0.0.1").strip()

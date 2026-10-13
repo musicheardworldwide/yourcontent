@@ -1,6 +1,6 @@
 """HTTP client for the post render service (render/ in this repository, its own container).
 
-URL from MEDIA_LAB_RENDER_URL (default http://render:8191, the compose service name). Plain http on the internal
+URL from YOURCONTENT_RENDER_URL (or MEDIA_LAB_RENDER_URL) (default http://render:8191, the compose service name). Plain http on the internal
 network only, no proxies, no redirects. When the service is off, `feature()` says so in one short reason (the way
 features.py reports a missing ComfyUI) and calls raise RenderOff (503); nothing here crashes the app.
 """
@@ -12,6 +12,8 @@ import os
 import threading
 import time
 import urllib.parse
+
+from . import config
 
 DEFAULT_URL = "http://render:8191"
 OFF = "the render service is not reachable"
@@ -34,13 +36,13 @@ class RenderFailed(Exception):
 
 
 def base_url() -> str:
-    return (os.environ.get("MEDIA_LAB_RENDER_URL") or DEFAULT_URL).rstrip("/")
+    return (config.env("RENDER_URL") or DEFAULT_URL).rstrip("/")
 
 
 def _target() -> tuple[str, int]:
     u = urllib.parse.urlsplit(base_url())
     if u.scheme != "http" or not u.hostname or u.path not in ("", "/") or u.query or u.username:
-        raise RenderOff("MEDIA_LAB_RENDER_URL must be http://host:port")
+        raise RenderOff("YOURCONTENT_RENDER_URL must be http://host:port")
     return u.hostname, u.port or 80
 
 

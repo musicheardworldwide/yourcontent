@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 # YourContent craft service: four open-source photo/video apps (PhotoCraft, LightCraft, FilmCraft, EffectCraft from
 # github.com/storytold, MIT OR Apache-2.0) driven headlessly over MCP, each run inside bubblewrap.
-# Build from the repository root:  docker build -f craft/Dockerfile -t media-lab-craft .
+# Build from the repository root:  docker build -f craft/Dockerfile -t yourcontent-craft .
 # (compose.yaml does this for the `craft` service). The four builds run in parallel; expect 10-30 minutes.
 ARG RUST_IMAGE=rust:1.95-slim-bookworm
 ARG PYTHON_IMAGE=python:3.12-slim-bookworm
@@ -48,11 +48,11 @@ WORKDIR /app
 COPY medialab/__init__.py medialab/types.py medialab/config.py medialab/store.py medialab/provenance.py \
      medialab/licences.json medialab/craft_spec.py medialab/
 COPY craft/__init__.py craft/craftd.py craft/recipes.py craft/mcp_client.py craft/craft-mcp craft/
-COPY THIRD-PARTY-NOTICES.md NOTICE LICENSE /usr/share/doc/media-lab/
+COPY THIRD-PARTY-NOTICES.md NOTICE LICENSE /usr/share/doc/yourcontent/
 RUN chmod 0755 craft/craft-mcp && mkdir -p /data /output /uploads && chown 1000:1000 /data
-ENV MEDIA_LAB_DATA=/data \
-    MEDIA_LAB_COMFY_OUTPUT=/output \
-    MEDIA_LAB_UPLOADS=/uploads \
+ENV YOURCONTENT_DATA=/data \
+    YOURCONTENT_COMFY_OUTPUT=/output \
+    YOURCONTENT_UPLOADS=/uploads \
     CRAFT_BIN_DIR=/opt/craft/bin \
     CRAFT_VERSIONS_DIR=/opt/craft/versions \
     PYTHONUNBUFFERED=1 \

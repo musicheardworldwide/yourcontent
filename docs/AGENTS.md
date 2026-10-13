@@ -10,7 +10,7 @@ Paste the prompt into the agent. It contains the address, a credential if this i
 command for that kind of agent and the house rules.
 
 - **MCP (preferred):** Streamable HTTP at `<address>/mcp`, JSON responses, no event stream.
-  - Claude Code: `claude mcp add --transport http media-lab http://127.0.0.1:8190/mcp` (add
+  - Claude Code: `claude mcp add --transport http yourcontent http://127.0.0.1:8190/mcp` (add
     `--header "Authorization: Bearer <token>"` when the install needs a token).
   - Clients that speak only stdio can bridge with `npx -y mcp-remote <address>/mcp` (add `--allow-http` for a
     plain-HTTP address and `--header "Authorization: Bearer <token>"` when needed).
@@ -21,7 +21,7 @@ command for that kind of agent and the house rules.
 | install | what the agent needs |
 |---|---|
 | Listens only on this computer (the default) | nothing; any program on the computer can use it, so the agent must run there |
-| Reachable from other machines (`MEDIA_LAB_TOKEN` set) | an **agent token** (`mla_…`) from the setup prompt, sent as `Authorization: Bearer` |
+| Reachable from other machines (`YOURCONTENT_TOKEN` set) | an **agent token** (`mla_…`) from the setup prompt, sent as `Authorization: Bearer` |
 
 An agent token can make, arrange and schedule. It **cannot** delete files, cuts, calendar entries or brand
 kits, cannot make or list other agents, and cannot connect or disconnect Google. Only its SHA-256 is stored;
@@ -47,8 +47,8 @@ Files are always references `{root, name}` as `list_media` returns them, never p
 Every file has a sidecar with the models that made it and their licences, and anything made from other files
 inherits the most restrictive one.
 
-- `commercial_ok: false`: say so before suggesting the file for business or paid use (for example, the default
-  Qwen-Image 2.1 picture model is non-commercial).
+- `commercial_ok: false`: say so before suggesting the file for business or paid use (for example, anything made
+  with the Qwen-Image 2.1 picture model is non-commercial; the default, Qwen-Image-2512, is commercial OK).
 - `commercial_ok: null`: rights not checked (an upload with no record).
 
 ## 4. House rules

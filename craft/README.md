@@ -49,8 +49,8 @@ browser / agent                  app container (medialab/)                 craft
   kit. Fonts are family names; put the matching TTF/OTF files in `DATA/craft/fonts/` (mounted read-only into the
   sandbox), otherwise the apps fall back to their built-in Inter.
 - **AI masks are off.** LightCraft can select objects with Meta's SAM 3, whose weights are under the SAM License (a
-  custom licence, not open source). Nothing loads it unless `MEDIA_LAB_CRAFT_AI_MASKS=1` is set and
-  `MEDIA_LAB_CRAFT_SAM3_DIR` names a folder holding the model you downloaded yourself; only then is that folder
+  custom licence, not open source). Nothing loads it unless `YOURCONTENT_CRAFT_AI_MASKS=1` is set and
+  `YOURCONTENT_CRAFT_SAM3_DIR` names a folder holding the model you downloaded yourself; only then is that folder
   mounted read-only into LightCraft's sandbox. No recipe uses masks yet.
 
 ## Run
@@ -77,7 +77,7 @@ no capabilities, a read-only root filesystem and no network).
 and this table, rebuild, and run `tests/e2e_craft.py`.
 
 Without Docker: build the four CLIs yourself, then `CRAFT_BIN_DIR=<folder> python3 -m craft.craftd` with the same
-`MEDIA_LAB_*` folders as the app (needs `bwrap`).
+`YOURCONTENT_*` folders as the app (needs `bwrap`).
 
 ## Test
 

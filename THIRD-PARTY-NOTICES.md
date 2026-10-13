@@ -7,11 +7,14 @@ graphs to a ComfyUI you run, which loads model files you downloaded yourself. Ea
 those licences apply to how you use the models and what you make with them. YourContent records the licence of every
 model it used in each file's sidecar, and an export inherits the most restrictive one.
 
-Checked 2026-10-07 against the model cards on Hugging Face.
+Checked against the model cards on Hugging Face: Qwen-Image-2512 on 2026-10-12, the rest on 2026-10-07.
 
 | model | files YourContent names by default | role | licence | commercial use |
 |---|---|---|---|---|
-| Qwen-Image 2.1 ([Qwen/Qwen-Image-2.1](https://huggingface.co/Qwen/Qwen-Image-2.1), ComfyUI repack [Comfy-Org/Qwen-Image-2.1](https://huggingface.co/Comfy-Org/Qwen-Image-2.1)) | `qwen_image_2.1_bf16.safetensors`, `qwen_image_2.1_vae_bf16.safetensors` | picture model and VAE | Qwen RESEARCH LICENSE AGREEMENT (release date 2026-09-20) | **No.** Non-commercial purposes only; a separate commercial licence from Qwen is needed |
+| **Qwen-Image-2512** (default) ([Qwen/Qwen-Image-2512](https://huggingface.co/Qwen/Qwen-Image-2512), ComfyUI repack [Comfy-Org/Qwen-Image_ComfyUI](https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI)) | `qwen_image_2512_fp8_e4m3fn.safetensors` | picture model | Apache-2.0 (the model card's `license: apache-2.0`; the repack declares `apache-2.0` too) | **Yes**; YourContent labels its pictures commercial OK (`qwen-image-2512`) |
+| Qwen2.5-VL 7B, fp8 file from that repack (upstream [Qwen/Qwen2.5-VL-7B-Instruct](https://huggingface.co/Qwen/Qwen2.5-VL-7B-Instruct)) | `qwen_2.5_vl_7b_fp8_scaled.safetensors` | Qwen-Image-2512's text encoder | Apache-2.0 | yes |
+| Qwen-Image VAE, from that repack | `qwen_image_vae.safetensors` | Qwen-Image-2512's VAE | Apache-2.0 | yes |
+| Qwen-Image 2.1, selectable ([Qwen/Qwen-Image-2.1](https://huggingface.co/Qwen/Qwen-Image-2.1), ComfyUI repack [Comfy-Org/Qwen-Image-2.1](https://huggingface.co/Comfy-Org/Qwen-Image-2.1)) | `qwen_image_2.1_bf16.safetensors`, `qwen_image_2.1_vae_bf16.safetensors` | picture model and VAE | Qwen RESEARCH LICENSE AGREEMENT (release date 2026-09-20) | **No.** Non-commercial purposes only; a separate commercial licence from Qwen is needed |
 | Any Qwen-Image 2.1 quantisation, fine-tune or LoRA you add in `data/lab/config/models.json` | yours | picture model | follows Qwen-Image 2.1 (YourContent labels it `qwen-image-nc`) | **No** |
 | Qwen3-VL 8B, int8 file from the ComfyUI repack ([Comfy-Org/Qwen-Image-2.1](https://huggingface.co/Comfy-Org/Qwen-Image-2.1)) | `qwen3vl_8b_int8_convrot.safetensors` | picture text encoder | Qwen research licence: the repack that distributes this file declares `qwen-research` (YourContent labels it `qwen-image-nc`). Upstream [Qwen/Qwen3-VL-8B-Instruct](https://huggingface.co/Qwen/Qwen3-VL-8B-Instruct) is Apache-2.0, which applies only to a conversion you make from it yourself | **No** (as distributed in the repack) |
 | Wan 2.2 I2V A14B ([Wan-AI/Wan2.2-I2V-A14B](https://huggingface.co/Wan-AI/Wan2.2-I2V-A14B)) | `wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors`, `wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors` | clip model (two experts) | Apache-2.0 | yes |
@@ -21,6 +24,9 @@ Checked 2026-10-07 against the model cards on Hugging Face.
 | ACE-Step 1.5 turbo ([ACE-Step/Ace-Step1.5](https://huggingface.co/ACE-Step/Ace-Step1.5)) | `acestep_v1.5_turbo.safetensors`, `qwen_0.6b_ace15.safetensors`, `qwen_1.7b_ace15.safetensors`, `ace_1.5_vae.safetensors` | music | Apache-2.0 / MIT (the model card lists MIT) | yes; the card says generated music may be used commercially |
 
 What this means in practice:
+- A picture made with Qwen-Image-2512 (the default) has no model restriction and is labelled commercial OK. So is
+  a clip made from it, as long as nothing else in it is restricted. Apache-2.0 asks anyone who redistributes the
+  model files to keep its licence and notices; YourContent does not redistribute them.
 - A picture made with any Qwen-Image 2.1 variant is non-commercial. So is a clip or extension made from it, and any
   cut that contains one of them. YourContent labels them "NC" and says so in the export row; it never blocks.
 - A cut made only of your own uploads and ACE-Step music has no model restriction, but uploads are marked "rights

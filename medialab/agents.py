@@ -4,7 +4,7 @@ An agent token is a Bearer credential that can make and arrange things but not d
 access: delete, Google connect/disconnect and the token routes themselves are refused (AGENT_DENY). Only the
 SHA-256 of a token is stored (`DATA/config/agents.json`); the token is shown once, when it is made.
 
-Tokens matter only when the server requires a token (MEDIA_LAB_TOKEN set). On a loopback-only install with no
+Tokens matter only when the server requires a token (YOURCONTENT_TOKEN set). On a loopback-only install with no
 token, every local process already has full access; the setup prompt says so instead of pretending otherwise.
 """
 from __future__ import annotations

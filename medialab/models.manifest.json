@@ -1,8 +1,12 @@
 {
  "schema": "media-lab/models-manifest@1",
- "_note": "Stock Comfy-Org repacks, pinned by revision. Bytes and sha256 from the Hugging Face tree API, 2026-10-07. The manifest names files, never sets: which files a feature needs comes from its graph. URL: <endpoint>/<repo id>/resolve/<rev>/<path>.",
+ "_note": "Stock Comfy-Org repacks, pinned by revision. Bytes and sha256 from the Hugging Face tree API (Qwen-Image-2512 files 2026-10-12, the rest 2026-10-07). The manifest names files, never sets: which files a feature needs comes from its graph. URL: <endpoint>/<repo id>/resolve/<rev>/<path>.",
  "endpoint": "https://huggingface.co",
  "repos": {
+  "qwen2512": {
+   "id": "Comfy-Org/Qwen-Image_ComfyUI",
+   "rev": "1f12b17be14c89b026c51a91d67c32f84bb047bc"
+  },
   "qwen": {
    "id": "Comfy-Org/Qwen-Image-2.1",
    "rev": "cb504a4090723e43f17ad01cec0359490e2de613"
@@ -17,6 +21,30 @@
   }
  },
  "files": {
+  "qwen_image_2512_fp8_e4m3fn.safetensors": {
+   "repo": "qwen2512",
+   "path": "split_files/diffusion_models/qwen_image_2512_fp8_e4m3fn.safetensors",
+   "folder": "diffusion_models",
+   "bytes": 20430679144,
+   "sha256": "5dc80554d5d83390046a2f4a94ece06afb7700bf7b0aaf8bde9769793875876b",
+   "licence": "qwen-image-2512"
+  },
+  "qwen_2.5_vl_7b_fp8_scaled.safetensors": {
+   "repo": "qwen2512",
+   "path": "split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors",
+   "folder": "text_encoders",
+   "bytes": 9384670680,
+   "sha256": "cb5636d852a0ea6a9075ab1bef496c0db7aef13c02350571e388aea959c5c0b4",
+   "licence": "apache-2.0"
+  },
+  "qwen_image_vae.safetensors": {
+   "repo": "qwen2512",
+   "path": "split_files/vae/qwen_image_vae.safetensors",
+   "folder": "vae",
+   "bytes": 253806246,
+   "sha256": "a70580f0213e67967ee9c95f05bb400e8fb08307e017a924bf3441223e023d1f",
+   "licence": "apache-2.0"
+  },
   "qwen_image_2.1_bf16.safetensors": {
    "repo": "qwen",
    "path": "diffusion_models/qwen_image_2.1_bf16.safetensors",

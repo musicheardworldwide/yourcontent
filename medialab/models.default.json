@@ -1,9 +1,15 @@
 {
-  "_note": "Stock public files (Comfy-Org/Qwen-Image-2.1, checked 2026-10-07). Qwen-Image 2.1: Qwen Research Licence, non-commercial. The int8 Qwen3-VL 8B encoder file is distributed only in that repack, which declares the Qwen research licence, so it is labelled qwen-image-nc (upstream Qwen/Qwen3-VL-8B-Instruct is Apache-2.0, but only a conversion you make yourself carries that).",
+  "_note": "Stock public files. Default: Qwen-Image-2512 (Comfy-Org/Qwen-Image_ComfyUI, checked 2026-10-12), Apache-2.0, outputs commercial OK; its fp8 model, Qwen2.5-VL 7B fp8 encoder and Qwen-Image VAE are all Apache-2.0. Also selectable: Qwen-Image 2.1 (Comfy-Org/Qwen-Image-2.1, checked 2026-10-07), Qwen Research Licence, non-commercial. The int8 Qwen3-VL 8B encoder file is distributed only in that repack, which declares the Qwen research licence, so it is labelled qwen-image-nc (upstream Qwen/Qwen3-VL-8B-Instruct is Apache-2.0, but only a conversion you make yourself carries that). The image-level clip/vae/licence below are Qwen-Image 2.1's: a variant that names no graph is a 2.1 variant and inherits them.",
   "image": {
-    "default": "bf16",
+    "default": "2512",
     "variants": {
-      "bf16": {"label": "Qwen-Image 2.1 bf16", "unet": "qwen_image_2.1_bf16.safetensors", "lora": null}
+      "2512": {"label": "Qwen-Image-2512 fp8 (commercial OK)", "graph": "qwen-image-2512",
+               "unet": "qwen_image_2512_fp8_e4m3fn.safetensors", "lora": null,
+               "clip": "qwen_2.5_vl_7b_fp8_scaled.safetensors", "vae": "qwen_image_vae.safetensors",
+               "licence": "qwen-image-2512", "encoder_licence": "apache-2.0", "vae_licence": "apache-2.0",
+               "steps": 50, "cfg": 4.0},
+      "bf16": {"label": "Qwen-Image 2.1 bf16 (non-commercial)", "graph": "qwen-image-2.1",
+               "unet": "qwen_image_2.1_bf16.safetensors", "lora": null}
     },
     "clip": "qwen3vl_8b_int8_convrot.safetensors",
     "vae": "qwen_image_2.1_vae_bf16.safetensors",
@@ -26,11 +32,14 @@
   },
   "files": {},
   "file_patterns": [
+    ["(?i)qwen[-_ ]?image[-_ ]?2512", "qwen-image-2512"],
+    ["(?i)^qwen_image_vae\\.", "apache-2.0"],
+    ["(?i)^qwen_2\\.5_vl_7b", "apache-2.0"],
     ["(?i)qwen[-_ ]?image", "qwen-image-nc"],
     ["(?i)^wan2\\.[12]_", "apache-2.0"],
     ["(?i)lightx2v", "apache-2.0"],
     ["(?i)^umt5", "apache-2.0"],
     ["(?i)^(acestep|ace_)|_ace15\\.", "ace-step"]
   ],
-  "aliases": {}
+  "aliases": {"2.1": "bf16", "qwen-image-2.1": "bf16", "qwen-image-2512": "2512"}
 }

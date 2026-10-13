@@ -38,13 +38,13 @@ RULES = """House rules:
 def _mcp_block(preset: str, url: str, token: str | None) -> str:
     auth = f"Authorization: Bearer {token}" if token else None
     if preset == "claude":
-        cmd = f"claude mcp add --transport http media-lab {url}"
+        cmd = f"claude mcp add --transport http yourcontent {url}"
         if auth:
             cmd += f' --header "{auth}"'
         args = ["-y", "mcp-remote", url] + (["--allow-http"] if url.startswith("http://") else [])
         if token:
             args += ["--header", f"Authorization: Bearer {token}"]
-        desktop = json.dumps({"mcpServers": {"media-lab": {"command": "npx", "args": args}}})
+        desktop = json.dumps({"mcpServers": {"yourcontent": {"command": "npx", "args": args}}})
         return ("Connect over MCP (preferred).\n"
                 f"- Claude Code: run\n    {cmd}\n"
                 "- Claude Desktop (needs Node.js; mcp-remote bridges it to the HTTP server): add this to "

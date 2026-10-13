@@ -102,7 +102,7 @@
     const title = h("h2", {class: "cal-title", id: id("title"), "aria-live": "polite"});
     const vMonth = h("button", {class: "chip", type: "button", text: "Month", data: {view: "month"}});
     const vWeek = h("button", {class: "chip", type: "button", text: "Week", data: {view: "week"}});
-    const ics = h("a", {class: "btn ghost", href: "/api/calendar.ics", download: "media-lab-calendar.ics",
+    const ics = h("a", {class: "btn ghost", href: "/api/calendar.ics", download: "yourcontent-calendar.ics",
       title: "Download the calendar (.ics) for a calendar app"}, icon("download"), "Download .ics");
     const sub = h("button", {class: "ghost", type: "button", text: "Subscribe",
       title: "Copy a private link that Google, Apple or Outlook Calendar can subscribe to"});

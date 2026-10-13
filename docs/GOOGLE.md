@@ -22,15 +22,15 @@ Each self-hosted YourContent uses its **own** Google OAuth client. Nothing goes 
    `.apps.googleusercontent.com`) and the client secret.
 5. Give them to YourContent and restart it:
    ```
-   MEDIA_LAB_GOOGLE_CLIENT_ID=1234-abc.apps.googleusercontent.com
-   MEDIA_LAB_GOOGLE_CLIENT_SECRET=...
+   YOURCONTENT_GOOGLE_CLIENT_ID=1234-abc.apps.googleusercontent.com
+   YOURCONTENT_GOOGLE_CLIENT_SECRET=...
    ```
    With compose, put them in the service's `environment:` block or in an env file that git ignores. Keep the
    secret out of git. A desktop client's secret is not truly secret, but it is still yours.
 6. Open YourContent at **http://127.0.0.1:8190** (a loopback address), go to the Google panel, press
    **Connect Google**, approve, then press **Create workspace**.
 
-If `MEDIA_LAB_GOOGLE_CLIENT_ID` is not set, the panel says so and points here.
+If `YOURCONTENT_GOOGLE_CLIENT_ID` is not set, the panel says so and points here.
 
 ### Addresses
 
@@ -111,6 +111,6 @@ The callback is a GET that changes state, so it guards itself:
   through an HttpOnly, SameSite=Lax cookie limited to the callback path.
 - Sign-in uses PKCE (S256).
 - The server's Host allowlist still applies to the callback.
-- When `MEDIA_LAB_TOKEN` is set, the callback is the one API route that needs no session. The Strict session
+- When `YOURCONTENT_TOKEN` is set, the callback is the one API route that needs no session. The Strict session
   cookie does not come back from Google's page, and the binding cookie can only be obtained by an
   authenticated `POST /connect`.

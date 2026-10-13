@@ -14,7 +14,7 @@ app.py → medialab/server.py (ThreadingHTTPServer)
    ├─ graphs.py     PURE ComfyUI graphs                       ├─ comfy.py    ComfyUI HTTP client
    ├─ provenance.py PURE licence maths + sidecar shape        ├─ legacy.py   adoption of pre-v1 files
    ├─ models.py     models.default.json + licences.json + DATA/config/models.json
-   ├─ features.py   PURE: which features work, and why not    ├─ config.py   MEDIA_LAB_* env
+   ├─ features.py   PURE: which features work, and why not    ├─ config.py   YOURCONTENT_* env (MEDIA_LAB_* fallback)
    ├─ store.py      roots, refs, path safety, sidecar index, ledger, scoped delete
    ├─ media.py      ffprobe/ffmpeg helpers (probe cache, audio conform, posters, last frame, stitch)
    ├─ studio extensions (server.install_extension: routes + static files, injected into index.html):
@@ -41,7 +41,7 @@ Folders (a file is always a ref `{root, name}`, never a path):
 | root | folder | holds |
 |---|---|---|
 | `out` | ComfyUI `output/` (flat) | adopted legacy files (`qwen_studio_*`, `qwen_video_*`) |
-| `gen` | ComfyUI `output/media_lab/` | new pictures, clips, extensions, music |
+| `gen` | ComfyUI `output/yourcontent/` (+ `output/media_lab/`, read for files made before the rename) | new pictures, clips, extensions, music |
 | `in` | ComfyUI `input/<subdir>/` | picture uploads, temporary last frames |
 | `lab` | `DATA/media/` | video/audio uploads, exports |
 
@@ -50,7 +50,10 @@ file is owned iff its sidecar exists), the ledger of ComfyUI prompt ids, project
 mixes, proxies) and `config/models.json`.
 
 Flows:
-- **Picture:** `TextEncodeQwenImage21` takes up to 6 references as `images.image_N` plus the VAE.
+- **Picture:** default Qwen-Image-2512 (`graphs.image_graph_2512`, ComfyUI's own template: CLIPTextEncode with the
+  Qwen2.5-VL encoder, ModelSamplingAuraFlow 3.1, EmptySD3LatentImage, 50 steps at cfg 4; text only, refs refused).
+  Qwen-Image 2.1 (variant `bf16`): `TextEncodeQwenImage21` takes up to 6 references as `images.image_N` plus the VAE.
+  A variant's `graph` in models.default.json picks the family; one without it is a 2.1 variant.
 - **Clip:** two-expert Wan 2.2 (high noise steps 0–2, then low noise), 16 fps; VideoHelperSuite writes the mp4 and
   a poster png.
 - **Extend:** ffmpeg grabs the last frame, Wan animates from it at the same size, ffmpeg joins the two without the
@@ -60,5 +63,5 @@ Flows:
   48 kHz mix shared by proxy and final → one `filter_complex` → verify frames and audio length → sidecar with the
   render block and inherited licence.
 - **Delete:** file + poster + sidecar, then `POST /history {delete: [ledger pids]}`; nothing else in ComfyUI.
-- **Start:** empty `DATA/tmp`, configure modules, adopt legacy files when `MEDIA_LAB_ADOPT_LEGACY=1` (idempotent;
+- **Start:** empty `DATA/tmp`, configure modules, adopt legacy files when `YOURCONTENT_ADOPT_LEGACY=1` (idempotent;
   originals are only read).

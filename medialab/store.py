@@ -21,6 +21,10 @@ from datetime import datetime, timezone
 from .types import BadRef, NotOwned, Ref
 
 ROOTS = ("out", "gen", "in", "lab")
+# The output subfolder's name before YourContent (2026-10-12). When the configured subfolder is another name, files
+# already in output/media_lab/ stay part of root "gen": resolve() finds a gen file there when it isn't in the new
+# folder, so existing sidecars, cuts and calendar entries keep working. New files always go to the new folder.
+LEGACY_SUBDIR = "media_lab"
 NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,159}$")
 
 IMAGE_EXT = {"png", "jpg", "jpeg", "webp"}
@@ -33,6 +37,7 @@ DATA_DIRS = ("config", "media", "projects", "cache", "cache/music", "cache/loud"
 
 _cfg = None
 _dirs: dict[str, str] = {}
+_gen_legacy: str | None = None
 _data: str = ""
 _lock = threading.RLock()
 _ledger_lock = threading.Lock()
@@ -44,13 +49,14 @@ _index_cache: tuple[tuple, dict] | None = None
 def configure(cfg, prepare: bool = True) -> None:
     """Point the store at cfg's folders. With prepare, create the DATA layout (0700) and DATA/VERSION.
     Raises OSError with a plain message when DATA can't be written."""
-    global _cfg, _dirs, _data, _index_cache
+    global _cfg, _dirs, _data, _index_cache, _gen_legacy
     data = os.path.abspath(cfg.data)
     out = os.path.abspath(cfg.comfy_output)
     dirs = {"out": out, "gen": os.path.join(out, cfg.output_subdir), "in": os.path.abspath(cfg.uploads),
             "lab": os.path.join(data, "media")}
+    legacy = os.path.join(out, LEGACY_SUBDIR) if cfg.output_subdir != LEGACY_SUBDIR else None
     with _lock:
-        _cfg, _dirs, _data, _index_cache = cfg, dirs, data, None
+        _cfg, _dirs, _data, _index_cache, _gen_legacy = cfg, dirs, data, None, legacy
     if prepare:
         try:
             for d in ("",) + DATA_DIRS:
@@ -113,7 +119,8 @@ def scrub(msg: str) -> str:
     """Remove absolute paths from a message before it reaches a response (§6: responses never contain
     absolute paths). Configured roots become their root name; any other path-like run becomes "…"."""
     s = str(msg)
-    for root, d in sorted(_dirs.items(), key=lambda kv: -len(kv[1])):
+    pairs = list(_dirs.items()) + ([("gen", _gen_legacy)] if _gen_legacy else [])
+    for root, d in sorted(pairs, key=lambda kv: -len(kv[1])):
         s = s.replace(d + os.sep, "").replace(d, root)
     if _data:
         s = s.replace(_data + os.sep, "").replace(_data, "data")
@@ -165,6 +172,9 @@ def resolve(ref: Ref) -> str:
     root, name = check_ref(ref)
     base = root_dir(root)
     path = os.path.join(base, name)
+    if root == "gen" and _gen_legacy and not os.path.lexists(path) and os.path.lexists(os.path.join(_gen_legacy, name)):
+        base = _gen_legacy
+        path = os.path.join(base, name)
     if os.path.realpath(os.path.dirname(path)) != os.path.realpath(base):
         raise BadRef("that file is outside YourContent's folders")
     try:
@@ -173,6 +183,15 @@ def resolve(ref: Ref) -> str:
     except OSError:
         raise BadRef("that file can't be read") from None
     return path
+
+
+def gen_subdir(name: str) -> str:
+    """The output subfolder a gen file is in: the configured one, or LEGACY_SUBDIR for a file only found there
+    (ComfyUI's LoadImage needs the real subfolder)."""
+    cfg = config()
+    if _gen_legacy and os.path.dirname(resolve(("gen", name))) == _gen_legacy:
+        return LEGACY_SUBDIR
+    return cfg.output_subdir
 
 
 def _sidecar_path(ref: Ref) -> str:

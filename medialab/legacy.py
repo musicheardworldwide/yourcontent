@@ -1,7 +1,7 @@
 """Idempotent adoption of pre-v1 files (§13). Owner: WP3. Opens owner files read-only; never moves them.
 
 Adoption only adds sidecars (and ledger lines) under DATA. Nothing in ComfyUI's folders is renamed, moved,
-rewritten or deleted, and file mtimes are untouched. It runs at every start when MEDIA_LAB_ADOPT_LEGACY=1 and
+rewritten or deleted, and file mtimes are untouched. It runs at every start when YOURCONTENT_ADOPT_LEGACY=1 and
 skips anything that already has a sidecar, so running it twice changes nothing.
 
 Lineage comes from the graph ComfyUI embedded in each file: a PNG tEXt/iTXt `prompt` chunk, an MP4 `prompt`
@@ -334,7 +334,7 @@ def load_ref(value: str, cfg) -> tuple[str, str] | None:
     if kind == "output":
         if sub == "":
             return ("out", name)
-        if sub == cfg.output_subdir:
+        if sub == cfg.output_subdir or sub == "media_lab":   # media_lab: the output folder before YourContent
             return ("gen", name)
         return None
     if kind == "input" and sub == cfg.input_subdir:

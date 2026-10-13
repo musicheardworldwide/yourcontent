@@ -1,4 +1,5 @@
 {
+  "qwen-image-2512": {"text": "Apache-2.0 (Qwen-Image-2512), outputs commercial OK", "short": "Qwen-Image-2512 (commercial OK)", "commercial_ok": true},
   "qwen-image-nc": {"text": "Qwen-Image 2.1 licence (non-commercial research)", "short": "Qwen-Image 2.1 (non-commercial)", "commercial_ok": false},
   "apache-2.0": {"text": "Apache-2.0", "short": "Apache-2.0", "commercial_ok": true},
   "ace-step": {"text": "Apache-2.0 / MIT, outputs commercial OK", "short": "ACE-Step 1.5 (commercial OK)", "commercial_ok": true},

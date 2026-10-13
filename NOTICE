@@ -3,13 +3,17 @@ Copyright (c) 2026 Wes Caldwell. Licensed under the PolyForm Small Business Lice
 
 YourContent does not include any model weights. It can drive models that you obtain and run yourself, including:
 
-Qwen-Image 2.1
+Qwen-Image-2512 (the default picture model), with the Qwen2.5-VL 7B text encoder and the Qwen-Image VAE
+Licensed under the Apache License, Version 2.0, as declared on its model card at
+https://huggingface.co/Qwen/Qwen-Image-2512. That licence puts no restriction on the pictures made with it.
+
+Qwen-Image 2.1 (selectable)
 Qwen is licensed under the Qwen RESEARCH LICENSE AGREEMENT, Copyright (c) 2026 Hangzhou Tongyi Laboratory
 Technology Co., Ltd. All Rights Reserved.
 The Qwen RESEARCH LICENSE AGREEMENT permits use for non-commercial purposes only. Its full text is published with
 the model at https://huggingface.co/Qwen/Qwen-Image-2.1 (file LICENSE). Anyone who distributes Qwen-Image 2.1
 files must include a copy of that agreement and the notice above.
 
-"Qwen" is used in YourContent only to name that model. YourContent is not made, endorsed or supported by the Qwen team.
+"Qwen" is used in YourContent only to name these models. YourContent is not made, endorsed or supported by the Qwen team.
 
-Other models (Wan 2.2, lightx2v, umt5-xxl, Qwen3-VL, ACE-Step 1.5): see THIRD-PARTY-NOTICES.md.
+Other models (Wan 2.2, lightx2v, umt5-xxl, Qwen3-VL, Qwen2.5-VL, ACE-Step 1.5): see THIRD-PARTY-NOTICES.md.

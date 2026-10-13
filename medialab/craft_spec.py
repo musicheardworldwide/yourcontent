@@ -20,7 +20,7 @@ import colorsys
 import os
 import re
 
-from . import store
+from . import config, store
 from .types import BadRef
 
 RECIPES = ("photo.grade", "photo.finish", "video.titlecard", "video.reel")
@@ -88,9 +88,9 @@ def ref_key(ref) -> str:
 
 
 def ai_masks_enabled(env=None) -> bool:
-    """AI masks (LightCraft's SAM 3 object selection) are off unless MEDIA_LAB_CRAFT_AI_MASKS=1."""
+    """AI masks (LightCraft's SAM 3 object selection) are off unless YOURCONTENT_CRAFT_AI_MASKS=1 (or MEDIA_LAB_CRAFT_AI_MASKS=1)."""
     env = os.environ if env is None else env
-    return str(env.get("MEDIA_LAB_CRAFT_AI_MASKS") or "0").strip().lower() in ("1", "true", "yes", "on")
+    return str(config.env("CRAFT_AI_MASKS", env) or "0").strip().lower() in ("1", "true", "yes", "on")
 
 
 # --------------------------------------------------------------------------------------------- refs

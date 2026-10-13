@@ -53,8 +53,9 @@ TOOLS: list[tuple] = [
      _obj({}), "GET", "/api/health", (), True),
     ("list_media", "Recent pictures, clips, music and exports, newest first, with licence labels.",
      _obj({}), "GET", "/api/recent", (), True),
-    ("generate_picture", "Start a picture job from a prompt (optionally up to 6 reference pictures).",
-     _obj({"prompt": S, "negative": S, "steps": I, "seed": I, "refs": {"type": "array", "items": REF}},
+    ("generate_picture", "Start a picture job from a prompt. The default model, Qwen-Image-2512, is text-to-image "
+     "and commercial OK; reference pictures (up to 6) need variant \"bf16\" (Qwen-Image 2.1, non-commercial).",
+     _obj({"prompt": S, "negative": S, "steps": I, "seed": I, "variant": S, "refs": {"type": "array", "items": REF}},
           ("prompt",)), "POST", "/api/generate", None, False),
     ("animate_picture", "Start a clip job that animates a picture (3 or 5 seconds).",
      _obj({"start": REF, "prompt": S, "seconds": {"enum": [3, 5]}, "quality": {"enum": ["480p", "720p"]},
@@ -194,7 +195,7 @@ def handle(srv, h, msg: dict):
     if method == "initialize":
         want = (msg.get("params") or {}).get("protocolVersion") or PROTOCOL
         return {"protocolVersion": want if want <= PROTOCOL else PROTOCOL, "capabilities": {"tools": {}},
-                "serverInfo": {"name": "media-lab", "title": "YourContent", "version": VERSION},
+                "serverInfo": {"name": "yourcontent", "title": "YourContent", "version": VERSION},
                 "instructions": INSTRUCTIONS}
     if method == "ping":
         return {}

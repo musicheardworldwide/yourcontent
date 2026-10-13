@@ -91,7 +91,7 @@ class TestGenerate(ActionCase):
         up = self.upload_picture("My holiday photo.png")
         ref = up["ref"]
         self.assertEqual(ref["root"], "in")
-        res = actions.generate({"prompt": "a red door", "refs": [ref], "steps": 8, "seed": 42, "size": "portrait"},
+        res = actions.generate({"prompt": "a red door", "variant": "bf16", "refs": [ref], "steps": 8, "seed": 42, "size": "portrait"},
                                self.job)
         g = self.graphs_sent()[-1]
         self.assertEqual(g["8"]["inputs"]["filename_prefix"], "media_lab/img")
@@ -120,7 +120,8 @@ class TestGenerate(ActionCase):
     def test_refuses_unowned_and_lab_refs(self):
         make_png(self.roots.path("out", "qwen_studio_00001_.png"))
         with self.assertRaises(NotOwned):
-            actions.generate({"prompt": "x", "refs": [{"root": "out", "name": "qwen_studio_00001_.png"}]}, self.job)
+            actions.generate({"prompt": "x", "variant": "bf16",
+                              "refs": [{"root": "out", "name": "qwen_studio_00001_.png"}]}, self.job)
         with self.assertRaises(ValueError):
             actions.load_value(("lab", "up_x.mp4"))
         with self.assertRaises(ValueError):
@@ -145,7 +146,7 @@ class TestGenerate(ActionCase):
 
 class TestAnimateAndMusic(ActionCase):
     def test_clip_from_picture(self):
-        pic = actions.generate({"prompt": "a red door", "seed": 1}, self.job)
+        pic = actions.generate({"prompt": "a red door", "seed": 1, "variant": "bf16"}, self.job)
         res = actions.animate({"start": pic["ref"], "prompt": "slow push in", "seconds": "5", "quality": "480p",
                                "w": 1328, "h": 1328, "seed": 9}, self.job)
         g = self.graphs_sent()[-1]

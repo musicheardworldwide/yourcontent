@@ -49,9 +49,30 @@ def fit(w: int, h: int, area: int) -> tuple[int, int]:
     return int(round(tw / 16) * 16), int(round(tw / ratio / 16) * 16)
 
 
+# Picture graph families (a variant's "graph" in models.default.json). "qwen-image-2.1" is the default for
+# variants that name none, so an owner's own 2.1 variants keep working.
+IMAGE_GRAPHS = ("qwen-image-2512", "qwen-image-2.1")
+# Qwen-Image-2512's own negative prompt (ComfyUI's template uses this list in Chinese), used when none is given.
+QWEN_2512_NEGATIVE = ("low resolution, low quality, deformed limbs, deformed fingers, oversaturated, waxy look, "
+                      "faces without detail, overly smooth, AI look, chaotic composition, blurry or distorted text")
+
+
+def image_family(variant: dict) -> str:
+    g = variant.get("graph") or "qwen-image-2.1"
+    return g if g in IMAGE_GRAPHS else "qwen-image-2.1"
+
+
+def max_refs(variant: dict) -> int:
+    """Reference pictures a variant takes: Qwen-Image 2.1 up to MAX_REFS, Qwen-Image-2512 none (text-to-image)."""
+    return 0 if image_family(variant) == "qwen-image-2512" else MAX_REFS
+
+
 def image_graph(variant: dict, prompt: str, negative: str, w: int, h: int, steps: int, seed: int,
                 refs: list[str], prefix: str) -> dict:
-    """Qwen-Image 2.1 text-to-image. `variant` = {unet, lora, clip, vae}; `refs` are LoadImage values."""
+    """A picture from text. `variant` = {unet, lora, clip, vae, graph, cfg}; `refs` are LoadImage values (only
+    Qwen-Image 2.1 takes them; Qwen-Image-2512 ignores them, callers refuse them first)."""
+    if image_family(variant) == "qwen-image-2512":
+        return image_graph_2512(variant, prompt, negative, w, h, steps, seed, prefix)
     enc = {"clip": ["2", 0], "prompt": prompt, "negative_prompt": negative, "resolution": max(w, h)}
     g = {
         "1": {"class_type": "UNETLoader", "inputs": {"unet_name": variant["unet"], "weight_dtype": "default"}},
@@ -76,6 +97,34 @@ def image_graph(variant: dict, prompt: str, negative: str, w: int, h: int, steps
         enc[f"images.image_{i}"] = [f"r{i}", 0]
     if refs:
         enc["vae"] = ["3", 0]
+    return g
+
+
+def image_graph_2512(variant: dict, prompt: str, negative: str, w: int, h: int, steps: int, seed: int,
+                     prefix: str) -> dict:
+    """Qwen-Image-2512 text-to-image, node for node ComfyUI's own template (image_qwen_Image_2512): Qwen2.5-VL
+    text encoder through CLIPTextEncode, ModelSamplingAuraFlow shift 3.1, EmptySD3LatentImage, KSampler euler/simple
+    at cfg 4 (50 steps recommended)."""
+    cfg = float(variant.get("cfg") or 4.0)
+    g = {
+        "1": {"class_type": "UNETLoader", "inputs": {"unet_name": variant["unet"], "weight_dtype": "default"}},
+        "2": {"class_type": "CLIPLoader", "inputs": {"clip_name": variant["clip"], "type": "qwen_image",
+                                                     "device": "default"}},
+        "3": {"class_type": "VAELoader", "inputs": {"vae_name": variant["vae"]}},
+        "4": {"class_type": "CLIPTextEncode", "inputs": {"clip": ["2", 0], "text": prompt}},
+        "5": {"class_type": "CLIPTextEncode", "inputs": {"clip": ["2", 0], "text": negative or QWEN_2512_NEGATIVE}},
+        "6": {"class_type": "ModelSamplingAuraFlow", "inputs": {"model": ["1", 0], "shift": 3.1}},
+        "7": {"class_type": "EmptySD3LatentImage", "inputs": {"width": w, "height": h, "batch_size": 1}},
+        "8": {"class_type": "KSampler", "inputs": {"model": ["6", 0], "positive": ["4", 0], "negative": ["5", 0],
+                                                   "latent_image": ["7", 0], "seed": seed, "steps": steps, "cfg": cfg,
+                                                   "sampler_name": "euler", "scheduler": "simple", "denoise": 1.0}},
+        "9": {"class_type": "VAEDecode", "inputs": {"samples": ["8", 0], "vae": ["3", 0]}},
+        "10": {"class_type": "SaveImage", "inputs": {"images": ["9", 0], "filename_prefix": prefix}},
+    }
+    if variant.get("lora"):
+        g["11"] = {"class_type": "LoraLoaderModelOnly",
+                   "inputs": {"model": ["1", 0], "lora_name": variant["lora"], "strength_model": 1.0}}
+        g["6"]["inputs"]["model"] = ["11", 0]
     return g
 
 
@@ -125,7 +174,7 @@ def quantise_seconds(seconds: float) -> float:
 
 def music_graph(music: dict, tags: str, lyrics: str, bpm: int, seconds: float, seed: int,
                 keyscale: str = "C major", timesig: str = "4", language: str = "en",
-                saver: str = "SaveAudio", prefix: str = "media_lab/music") -> dict:
+                saver: str = "SaveAudio", prefix: str = "yourcontent/music") -> dict:
     """ACE-Step 1.5 turbo text-to-music (ComfyUI's audio_ace_step_1_5_split template, §9)."""
     if saver not in SAVERS:
         raise ValueError(f"unknown audio saver {saver}")

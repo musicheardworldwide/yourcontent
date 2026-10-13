@@ -5,7 +5,7 @@ with it through the Google Picker; nothing else in their Drive. That is why the 
 (root folder, Inbox / Rendered / Exports / Calendar, the "Content Plan" Sheet) instead of using existing folders.
 See docs/GOOGLE.md for the 5-minute client setup and the limits of drive.file.
 
-Secrets: the OAuth client comes from MEDIA_LAB_GOOGLE_CLIENT_ID / MEDIA_LAB_GOOGLE_CLIENT_SECRET (read when
+Secrets: the OAuth client comes from YOURCONTENT_GOOGLE_CLIENT_ID / YOURCONTENT_GOOGLE_CLIENT_SECRET (or the older MEDIA_LAB_* names) (read when
 needed, never returned). Tokens live in DATA/config/google.json, mode 0600. No function here logs a token or
 returns one; status() is the only view of the connection and it carries none.
 
@@ -30,11 +30,11 @@ import urllib.request
 from dataclasses import dataclass
 from typing import BinaryIO, Callable, Mapping
 
-from . import store
+from . import config, store
 
 SCOPE = "https://www.googleapis.com/auth/drive.file"
-ENV_ID = "MEDIA_LAB_GOOGLE_CLIENT_ID"
-ENV_SECRET = "MEDIA_LAB_GOOGLE_CLIENT_SECRET"
+ENV_ID = "YOURCONTENT_GOOGLE_CLIENT_ID"
+ENV_SECRET = "YOURCONTENT_GOOGLE_CLIENT_SECRET"
 SETUP_DOC = "docs/GOOGLE.md"
 CALLBACK_PATH = "/api/google/callback"
 
@@ -326,8 +326,8 @@ class Google:
     # ---- settings
     def _client(self) -> tuple[str | None, str | None]:
         env = os.environ if self.env is None else self.env
-        cid = (env.get(ENV_ID) or "").strip() or None
-        sec = (env.get(ENV_SECRET) or "").strip() or None
+        cid = (config.env(ENV_ID, env) or "").strip() or None
+        sec = (config.env(ENV_SECRET, env) or "").strip() or None
         return cid, sec
 
     def configured(self) -> tuple[bool, str | None]:

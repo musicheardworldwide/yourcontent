@@ -67,7 +67,7 @@ def serve(body: bytes = BODY, honour_range: bool = True):
 class TestShippedManifest(unittest.TestCase):
     def test_parses_and_every_entry_is_complete(self):
         m = getmodels.load_manifest()
-        self.assertEqual(len(m["files"]), 14)
+        self.assertEqual(len(m["files"]), 17)
         for name, f in m["files"].items():
             self.assertRegex(f["sha256"], r"^[0-9a-f]{64}$", name)
             self.assertGreater(f["bytes"], 0, name)
@@ -77,23 +77,33 @@ class TestShippedManifest(unittest.TestCase):
 
     def test_every_default_model_file_is_in_the_manifest(self):
         """The downloader and the health check can't disagree: every file the shipped graphs need is known."""
-        want = getmodels.wanted(models.load(None), getmodels.SETS)
+        m = models.load(None)
+        want = getmodels.wanted(m, getmodels.SETS)
         man = getmodels.load_manifest()
         names = {n for folders in want.values() for files in folders.values() for n in files}
-        self.assertEqual(len(names), 13)   # 3 picture (bf16 default) + 6 clip + 4 music
+        self.assertEqual(len(names), 13)   # 3 picture (Qwen-Image-2512 default) + 6 clip + 4 music
         self.assertEqual(sorted(names - set(man["files"])), [])
         for s, folders in want.items():
             for folder, files in folders.items():
                 for n in files:
                     self.assertEqual(man["files"][n]["folder"], folder, n)
+        for vid in m.image_variants():   # every shipped picture variant, not only the default
+            w = getmodels.wanted(m, ["pictures"], vid)["pictures"]
+            for folder, files in w.items():
+                for n in files:
+                    self.assertEqual(man["files"][n]["folder"], folder, (vid, n))
+                    self.assertEqual(man["files"][n]["licence"], m.licence_for_file(n), (vid, n))
 
     def test_totals_match_the_release_table(self):
         man = getmodels.load_manifest()
-        want = getmodels.wanted(models.load(None), getmodels.SETS)
+        m = models.load(None)
+        want = getmodels.wanted(m, getmodels.SETS)
         tot = {s: sum(man["files"][n]["bytes"] for fs in f.values() for n in fs) for s, f in want.items()}
-        self.assertEqual(round(tot["pictures"] / 1e9, 2), 24.26)
+        self.assertEqual(round(tot["pictures"] / 1e9, 2), 30.07)    # Qwen-Image-2512 fp8 + Qwen2.5-VL fp8 + VAE
         self.assertEqual(round(tot["clips"] / 1e9, 2), 38.03)
         self.assertEqual(round(tot["music"] / 1e9, 2), 10.03)
+        w21 = getmodels.wanted(m, ["pictures"], "bf16")["pictures"]
+        self.assertEqual(round(sum(man["files"][n]["bytes"] for fs in w21.values() for n in fs) / 1e9, 2), 24.26)
 
 
 class TestManifestParse(unittest.TestCase):

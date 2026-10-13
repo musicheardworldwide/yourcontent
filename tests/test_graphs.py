@@ -147,7 +147,7 @@ class TestMusicGraph(unittest.TestCase):
         self.assertEqual(enc["timesignature"], "4")
         self.assertEqual(enc["duration"], g["7"]["inputs"]["seconds"])
         self.assertEqual(enc["duration"], 13.72)
-        self.assertEqual(g["10"]["inputs"], {"audio": ["9", 0], "filename_prefix": "media_lab/music"})
+        self.assertEqual(g["10"]["inputs"], {"audio": ["9", 0], "filename_prefix": "yourcontent/music"})
         self.assertEqual(graphs.validate(g, self.oi), [])
 
     def test_seconds_quantised_to_latent_frames(self):

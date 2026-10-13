@@ -106,7 +106,7 @@ def load_value(ref: Ref) -> str:
     if root == "out":
         return f"{name} [output]"
     if root == "gen":
-        return f"{cfg.output_subdir}/{name} [output]"
+        return f"{store.gen_subdir(name)}/{name} [output]"
     if root == "in":
         return f"{cfg.input_subdir}/{name}"
     raise ValueError("use a picture from Recent")
@@ -221,7 +221,7 @@ def _remove_unowned(ref: Ref) -> None:
 # --------------------------------------------------------------------------------------------- generate
 
 def generate(body: dict, job) -> dict:
-    """A picture from a prompt (Qwen-Image 2.1), optionally with up to 6 reference pictures."""
+    """A picture from a prompt (Qwen-Image-2512 by default; Qwen-Image 2.1 also takes up to 6 reference pictures)."""
     cfg, m = _config(), _m()
     prompt = _text(body, "prompt", MAX_PROMPT)
     if not prompt:
@@ -231,9 +231,11 @@ def generate(body: dict, job) -> dict:
     raw_refs = body.get("refs") or []
     if not isinstance(raw_refs, list) or len(raw_refs) > graphs.MAX_REFS:
         raise ValueError(f"at most {graphs.MAX_REFS} reference pictures")
+    if raw_refs and not graphs.max_refs(variant):
+        raise ValueError(f"{variant['model']} takes no reference pictures: remove them, or pick Qwen-Image 2.1")
     refs = [_picture(r) for r in raw_refs]
     seed = _seed(body)
-    steps = max(4, min(int(body.get("steps") or 30), 60))
+    steps = max(4, min(int(body.get("steps") or variant.get("steps") or 30), 60))
     size = body.get("size") or "square"
     if size != "match" and size not in graphs.SIZES:
         raise ValueError(f"size must be one of {', '.join(graphs.SIZES)} or match")

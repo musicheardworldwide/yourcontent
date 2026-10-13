@@ -11,10 +11,10 @@ folder. It opens no port: the app and craftd share only the data folder.
 Run:  python3 -m craft.craftd            (the craft container's command)
       python3 -m craft.craftd --once     (run what is queued, then exit)
       python3 -m craft.craftd --check    (exit 0 if the heartbeat is fresh: the container health check)
-Env:  MEDIA_LAB_DATA / MEDIA_LAB_COMFY_OUTPUT / MEDIA_LAB_UPLOADS (as the app), CRAFT_BIN_DIR or CRAFT_SRC (where
+Env:  YOURCONTENT_DATA / YOURCONTENT_COMFY_OUTPUT / YOURCONTENT_UPLOADS (as the app), CRAFT_BIN_DIR or CRAFT_SRC (where
       the <app>-cli binaries are), CRAFT_VERSIONS_DIR (the pinned commits, written at image build),
-      CRAFT_WORK_ROOT (sandbox folders, default DATA/craft/work), MEDIA_LAB_CRAFT_AI_MASKS=1 and
-      MEDIA_LAB_CRAFT_SAM3_DIR (opt-in: LightCraft's SAM 3 model folder; Meta's SAM License, off by default).
+      CRAFT_WORK_ROOT (sandbox folders, default DATA/craft/work), YOURCONTENT_CRAFT_AI_MASKS=1 and
+      YOURCONTENT_CRAFT_SAM3_DIR (opt-in: LightCraft's SAM 3 model folder; Meta's SAM License, off by default).
 """
 from __future__ import annotations
 
@@ -100,7 +100,7 @@ def app_versions() -> dict:
 
 def masks_settings() -> dict:
     on = craft_spec.ai_masks_enabled()
-    sam = os.environ.get("MEDIA_LAB_CRAFT_SAM3_DIR") or None
+    sam = config_mod.env("CRAFT_SAM3_DIR") or None
     present = bool(on and sam and os.path.isfile(os.path.join(sam, "model.safetensors")))
     return {"enabled": on, "model_present": present, "sam3_dir": sam if on else None,
             "licence": craft_spec.SAM_LICENCE}

@@ -16,7 +16,7 @@ The callback is a GET that changes state. How the server's guard treats it:
   allowed host. It does: the redirect URI is built from the Host the page itself used for POST /connect.
 - guard() applies the X-Media-Lab header and Origin checks to POSTs only, so a top-level GET coming back
   from Google is not blocked by them (and could not satisfy them: a redirect carries neither header).
-- With MEDIA_LAB_TOKEN set, the session cookie is SameSite=Strict, and a browser does not send Strict cookies
+- With YOURCONTENT_TOKEN set, the session cookie is SameSite=Strict, and a browser does not send Strict cookies
   on a navigation that started on another site (Google's consent page). So routes() adds the callback to
   server.PUBLIC, and the callback protects itself instead: the `state` must match a pending entry (single use,
   10-minute expiry) AND the browser must bring back the binding cookie set on the authenticated POST /connect

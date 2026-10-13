@@ -24,6 +24,13 @@ VIDEO_IDS = {"unet": "wan2.2-i2v-a14b", "lora": "wan2.2-lightx2v-4step", "clip":
 MUSIC_IDS = {"unet": "ace-step-1.5-turbo", "clip1": "qwen3-0.6b-ace15", "clip2": "qwen3-1.7b-ace15",
              "vae": "ace-1.5-vae"}
 IMAGE_IDS = {"clip": "qwen3vl-8b", "vae": "qwen-image-2.1-vae"}
+# Per picture graph family: the model id used in sidecars, its display name, and the ids of its encoder and VAE.
+IMAGE_FAMILIES = {
+    "qwen-image-2.1": {"id": "qwen-image-2.1", "name": "Qwen-Image 2.1", "clip": "qwen3vl-8b",
+                       "vae": "qwen-image-2.1-vae"},
+    "qwen-image-2512": {"id": "qwen-image-2512", "name": "Qwen-Image-2512", "clip": "qwen2.5-vl-7b",
+                        "vae": "qwen-image-vae"},
+}
 
 
 def _merge(base: dict, over: dict) -> dict:
@@ -60,15 +67,31 @@ class Models:
         for vid, spec in (img.get("variants") or {}).items():
             if not isinstance(spec, dict) or not spec.get("unet"):
                 continue
+            graph = spec.get("graph") or img.get("graph") or "qwen-image-2.1"
+            fam = IMAGE_FAMILIES.get(graph, IMAGE_FAMILIES["qwen-image-2.1"])
+            if graph not in IMAGE_FAMILIES:
+                graph = "qwen-image-2.1"
+            # A variant names its own files and licences; anything it leaves out comes from the image section
+            # (Qwen-Image 2.1's files), so an owner's own 2.1 variants need only "unet".
+            own = graph != "qwen-image-2.1"
             self._variants[str(vid)] = {
                 "id": str(vid),
                 "label": str(spec.get("label") or vid),
+                "graph": graph,
+                "model": fam["name"],
+                "model_id": fam["id"],
                 "unet": spec["unet"],
                 "lora": spec.get("lora") or None,
-                "licence": spec.get("licence") or img.get("licence") or "unknown",
-                "clip": spec.get("clip") or img.get("clip"),
-                "vae": spec.get("vae") or img.get("vae"),
-                "encoder_licence": img.get("encoder_licence") or "unknown",
+                "licence": spec.get("licence") or (None if own else img.get("licence")) or "unknown",
+                "clip": spec.get("clip") or (None if own else img.get("clip")),
+                "vae": spec.get("vae") or (None if own else img.get("vae")),
+                "encoder_licence": spec.get("encoder_licence") or (None if own else img.get("encoder_licence"))
+                or "unknown",
+                "vae_licence": spec.get("vae_licence")
+                or (spec.get("licence") if own else (img.get("licence") or spec.get("licence"))) or "unknown",
+                "steps": int(spec.get("steps") or (50 if graph == "qwen-image-2512" else 30)),
+                "cfg": float(spec.get("cfg") or (4.0 if graph == "qwen-image-2512" else 1.0)),
+                "refs": 0 if graph == "qwen-image-2512" else 6,
             }
         patterns = []
         for item in data.get("file_patterns") or []:
@@ -160,15 +183,15 @@ class Models:
         for fname, lid in (self.data.get("files") or {}).items():
             if isinstance(lid, str):
                 out[fname] = (re.sub(r"\.safetensors$", "", fname), lid)
-        img = self._image
         for vid, v in self._variants.items():
-            out[v["unet"]] = (f"qwen-image-2.1:{vid}", v["licence"])
+            fam = IMAGE_FAMILIES[v["graph"]]
+            out[v["unet"]] = (f"{fam['id']}:{vid}", v["licence"])
             if v["lora"]:
-                out[v["lora"]] = (f"qwen-image-2.1-lora:{vid}", v["licence"])
+                out[v["lora"]] = (f"{fam['id']}-lora:{vid}", v["licence"])
             if v["clip"]:
-                out.setdefault(v["clip"], (IMAGE_IDS["clip"], v["encoder_licence"]))
+                out.setdefault(v["clip"], (fam["clip"], v["encoder_licence"]))
             if v["vae"]:
-                out.setdefault(v["vae"], (IMAGE_IDS["vae"], img.get("licence") or v["licence"]))
+                out.setdefault(v["vae"], (fam["vae"], v["vae_licence"]))
         vid_ = self.video
         vl = vid_.get("licence") or "unknown"
         for key in ("unet", "lora"):
@@ -188,13 +211,14 @@ class Models:
     # what each generator uses: [(id, role, file, licence id)] for provenance.model_entries
     def used_image(self, variant_id: str | None) -> list[tuple[str, str, str, str]]:
         v = self.variant(variant_id)
-        used = [(f"qwen-image-2.1:{v['id']}", "unet", v["unet"], v["licence"])]
+        fam = IMAGE_FAMILIES[v["graph"]]
+        used = [(f"{fam['id']}:{v['id']}", "unet", v["unet"], v["licence"])]
         if v["lora"]:
-            used.append((f"qwen-image-2.1-lora:{v['id']}", "lora", v["lora"], v["licence"]))
+            used.append((f"{fam['id']}-lora:{v['id']}", "lora", v["lora"], v["licence"]))
         if v["clip"]:
-            used.append((IMAGE_IDS["clip"], "text_encoder", v["clip"], v["encoder_licence"]))
+            used.append((fam["clip"], "text_encoder", v["clip"], v["encoder_licence"]))
         if v["vae"]:
-            used.append((IMAGE_IDS["vae"], "vae", v["vae"], self._image.get("licence") or v["licence"]))
+            used.append((fam["vae"], "vae", v["vae"], v["vae_licence"]))
         return used
 
     def used_video(self) -> list[tuple[str, str, str, str]]:
@@ -221,7 +245,7 @@ class Models:
         rows = [{"model": "YourContent", "licence": "PolyForm Small Business 1.0.0", "commercial_ok": True}]
         seen = set()
         for v in self._variants.values():
-            key = ("Qwen-Image 2.1", v["licence"])
+            key = (v["model"], v["licence"])
             if key not in seen:
                 seen.add(key)
                 rows.append({"model": key[0], "licence": self.licence(v["licence"])["text"],

@@ -25,6 +25,7 @@ REQUIRED_FILTERS: tuple[str, ...] = (
 # The object_info classes the graphs (and the fixture) need. §14.
 FIXTURE_CLASSES: tuple[str, ...] = (
     "UNETLoader", "CLIPLoader", "DualCLIPLoader", "VAELoader", "TextEncodeQwenImage21", "EmptyLatentImage",
+    "EmptySD3LatentImage",
     "KSampler", "KSamplerAdvanced", "VAEDecode", "SaveImage", "LoadImage", "LoraLoaderModelOnly",
     "ModelSamplingSD3", "ModelSamplingAuraFlow", "CLIPTextEncode", "WanImageToVideo", "VHS_VideoCombine",
     "TextEncodeAceStepAudio1.5", "EmptyAceStep1.5LatentAudio", "ConditioningZeroOut", "VAEDecodeAudio",
@@ -100,7 +101,7 @@ def compute(object_infos: dict, models: "Models", ff: dict) -> dict:
 
     variants = {}
     for vid, v in models.image_variants().items():
-        g = graphs.image_graph(v, "test", "", 1024, 1024, 4, 1, ["example.png"], "media_lab/img")
+        g = graphs.image_graph(v, "test", "", 1024, 1024, 4, 1, ["example.png"], "yourcontent/img")
         variants[vid] = {"label": v["label"], **gate(missing_for(g, oi, "pictures"))}
     picture = {"ok": any(x["ok"] for x in variants.values()), "variants": variants,
                "missing": [] if any(x["ok"] for x in variants.values()) else
@@ -110,7 +111,7 @@ def compute(object_infos: dict, models: "Models", ff: dict) -> dict:
     video = models.video
     if video.get("unet") and video.get("lora") and video.get("clip") and video.get("vae"):
         clip = gate(missing_for(graphs.video_graph(video, "example.png", "test", 832, 480, 49, 1,
-                                                   "media_lab/clip"), oi, "clips"))
+                                                   "yourcontent/clip"), oi, "clips"))
     else:
         clip = {"ok": False, "missing": ["no clip model is set up"]}
 

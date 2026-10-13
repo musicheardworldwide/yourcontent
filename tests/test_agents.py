@@ -31,7 +31,7 @@ class AgentsPure(unittest.TestCase):
         p = agent_setup.build_prompt("claude", {"base_url": "http://127.0.0.1:8190/", "token": "mla_x",
                                                 "token_required": True, "agent_name": "Helper",
                                                 "google": None, "columns": ["id", "when"]})
-        self.assertIn("claude mcp add --transport http media-lab http://127.0.0.1:8190/mcp", p)
+        self.assertIn("claude mcp add --transport http yourcontent http://127.0.0.1:8190/mcp", p)
         self.assertIn('--header "Authorization: Bearer mla_x"', p)
         self.assertIn("Connect > Google", p)
         self.assertIn("columns: id, when", p)
@@ -135,7 +135,7 @@ class AgentTokenRoutes(ServerCase):
         msg = {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2025-06-18"}}
         code, _, j = self.req("POST", "/mcp", msg, headers=ag, csrf=False)
         self.assertEqual(code, 200, j)
-        self.assertEqual(j["result"]["serverInfo"]["name"], "media-lab")
+        self.assertEqual(j["result"]["serverInfo"]["name"], "yourcontent")
         code, _, _ = self.req("POST", "/mcp", raw=b"{}", headers=ag, csrf=False, ctype="text/plain")
         self.assertEqual(code, 403)
         code, _, _ = self.req("POST", "/mcp", msg, csrf=False)

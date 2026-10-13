@@ -2,31 +2,39 @@
 # Defaults are generic and local-only. Put machine-specific values (bind address, ComfyUI URL, folder paths,
 # allowed host names) in a compose.override.yaml next to this file; it is gitignored.
 # Before the first start: mkdir -p data/lab   (so the data folder belongs to you, not to root)
-name: media-lab
+name: yourcontent
 services:
   app:
     build: .
-    image: media-lab:latest
-    container_name: media-lab
-    # To reach it from other machines set MEDIA_LAB_PUBLISH (e.g. in .env) AND MEDIA_LAB_TOKEN: the app refuses
-    # to start on a non-loopback publish address without a token. If you replace `ports` in an override
-    # instead, set MEDIA_LAB_PUBLISHED_HOST there to the same address, or the app cannot tell.
+    image: yourcontent:latest
+    container_name: yourcontent
+    # To reach it from other machines set YOURCONTENT_PUBLISH (e.g. in .env) AND YOURCONTENT_TOKEN: the app
+    # refuses to start on a non-loopback publish address without a token. If you replace `ports` in an override
+    # instead, set YOURCONTENT_PUBLISHED_HOST there to the same address, or the app cannot tell.
     ports:
-      - "${MEDIA_LAB_PUBLISH:-127.0.0.1}:8190:8190"
+      - "${YOURCONTENT_PUBLISH:-${MEDIA_LAB_PUBLISH:-127.0.0.1}}:8190:8190"
     environment:
+      # Settings are YOURCONTENT_*; the older MEDIA_LAB_* names still work (in .env or an override), and the new
+      # name wins when both are set. A default sits on the old name so an override that still sets the old
+      # name keeps winning over it.
+      YOURCONTENT_COMFY_URL: ${YOURCONTENT_COMFY_URL:-}
       MEDIA_LAB_COMFY_URL: ${MEDIA_LAB_COMFY_URL:-http://host.docker.internal:8188}
-      MEDIA_LAB_HOST: 0.0.0.0
-      MEDIA_LAB_PORT: "8190"
-      MEDIA_LAB_DATA: /data
-      MEDIA_LAB_COMFY_OUTPUT: /output
-      MEDIA_LAB_UPLOADS: /uploads
-      MEDIA_LAB_INPUT_SUBDIR: ${MEDIA_LAB_INPUT_SUBDIR:-media_lab}
+      YOURCONTENT_HOST: 0.0.0.0
+      YOURCONTENT_PORT: "8190"
+      YOURCONTENT_DATA: /data
+      YOURCONTENT_COMFY_OUTPUT: /output
+      YOURCONTENT_UPLOADS: /uploads
+      YOURCONTENT_INPUT_SUBDIR: ${YOURCONTENT_INPUT_SUBDIR:-${MEDIA_LAB_INPUT_SUBDIR:-}}
       # The container listens on 0.0.0.0; whether a token is required is decided from the publish address.
-      MEDIA_LAB_PUBLISHED_HOST: ${MEDIA_LAB_PUBLISHED_HOST:-${MEDIA_LAB_PUBLISH:-127.0.0.1}}
+      YOURCONTENT_PUBLISHED_HOST: ${YOURCONTENT_PUBLISHED_HOST:-}
+      MEDIA_LAB_PUBLISHED_HOST: ${MEDIA_LAB_PUBLISHED_HOST:-${YOURCONTENT_PUBLISH:-${MEDIA_LAB_PUBLISH:-127.0.0.1}}}
+      YOURCONTENT_REQUIRE_TOKEN: ${YOURCONTENT_REQUIRE_TOKEN:-}
       MEDIA_LAB_REQUIRE_TOKEN: ${MEDIA_LAB_REQUIRE_TOKEN:-auto}
-      MEDIA_LAB_TOKEN: ${MEDIA_LAB_TOKEN:-}
-      MEDIA_LAB_ALLOWED_HOSTS: ${MEDIA_LAB_ALLOWED_HOSTS:-}
-      MEDIA_LAB_ADOPT_LEGACY: ${MEDIA_LAB_ADOPT_LEGACY:-0}
+      YOURCONTENT_TOKEN: ${YOURCONTENT_TOKEN:-${MEDIA_LAB_TOKEN:-}}
+      YOURCONTENT_ALLOWED_HOSTS: ${YOURCONTENT_ALLOWED_HOSTS:-${MEDIA_LAB_ALLOWED_HOSTS:-}}
+      YOURCONTENT_TRUSTED_PROXY: ${YOURCONTENT_TRUSTED_PROXY:-${MEDIA_LAB_TRUSTED_PROXY:-}}
+      YOURCONTENT_ADOPT_LEGACY: ${YOURCONTENT_ADOPT_LEGACY:-${MEDIA_LAB_ADOPT_LEGACY:-0}}
+      YOURCONTENT_RENDER_URL: ${YOURCONTENT_RENDER_URL:-}
       MEDIA_LAB_RENDER_URL: ${MEDIA_LAB_RENDER_URL:-http://render:8191}
       PYTHONUNBUFFERED: "1"
     networks: [default, render]
@@ -41,10 +49,11 @@ services:
     security_opt:
       - no-new-privileges:true
     # Read-write. /data holds YourContent's own records (sidecars, projects, exports). /output is ComfyUI's
-    # output/ folder (new files go to output/media_lab/); /uploads is a subfolder of ComfyUI's input/ named
-    # like MEDIA_LAB_INPUT_SUBDIR. Delete removes only files YourContent made or adopted, for good.
+    # output/ folder (new files go to output/yourcontent/; files YourContent made earlier in output/media_lab/
+    # stay listed); /uploads is a subfolder of ComfyUI's input/ named like YOURCONTENT_INPUT_SUBDIR (default
+    # media_lab). Delete removes only files YourContent made or adopted, for good.
     volumes:
-      - ${MEDIA_LAB_DATA_DIR:-./data/lab}:/data
+      - ${YOURCONTENT_DATA_DIR:-${MEDIA_LAB_DATA_DIR:-./data/lab}}:/data
       - ${COMFY_OUTPUT_DIR:-./data/output}:/output
       - ${COMFY_UPLOADS_DIR:-./data/uploads}:/uploads
     restart: "no"
@@ -52,8 +61,8 @@ services:
   # no published port, no internet, no volumes; Chromium's own requests are answered from the image.
   render:
     build: ./render
-    image: media-lab-render:latest
-    container_name: media-lab-render
+    image: yourcontent-render:latest
+    container_name: yourcontent-render
     networks: [render]
     read_only: true
     tmpfs:
@@ -74,15 +83,15 @@ services:
     build:
       context: .
       dockerfile: craft/Dockerfile
-    image: media-lab-craft:latest
-    container_name: media-lab-craft
+    image: yourcontent-craft:latest
+    container_name: yourcontent-craft
     environment:
-      MEDIA_LAB_DATA: /data
-      MEDIA_LAB_COMFY_OUTPUT: /output
-      MEDIA_LAB_UPLOADS: /uploads
-      MEDIA_LAB_INPUT_SUBDIR: ${MEDIA_LAB_INPUT_SUBDIR:-media_lab}
+      YOURCONTENT_DATA: /data
+      YOURCONTENT_COMFY_OUTPUT: /output
+      YOURCONTENT_UPLOADS: /uploads
+      YOURCONTENT_INPUT_SUBDIR: ${YOURCONTENT_INPUT_SUBDIR:-${MEDIA_LAB_INPUT_SUBDIR:-}}
       # AI masks (SAM 3, Meta's SAM License, not open source) stay off unless you set this and mount the model.
-      MEDIA_LAB_CRAFT_AI_MASKS: ${MEDIA_LAB_CRAFT_AI_MASKS:-0}
+      YOURCONTENT_CRAFT_AI_MASKS: ${YOURCONTENT_CRAFT_AI_MASKS:-${MEDIA_LAB_CRAFT_AI_MASKS:-0}}
       PYTHONUNBUFFERED: "1"
     user: "1000:1000"
     read_only: true
@@ -96,7 +105,7 @@ services:
       - apparmor=unconfined
       - systempaths=unconfined
     volumes:
-      - ${MEDIA_LAB_DATA_DIR:-./data/lab}:/data
+      - ${YOURCONTENT_DATA_DIR:-${MEDIA_LAB_DATA_DIR:-./data/lab}}:/data
       - ${COMFY_OUTPUT_DIR:-./data/output}:/output:ro
       - ${COMFY_UPLOADS_DIR:-./data/uploads}:/uploads:ro
     networks:

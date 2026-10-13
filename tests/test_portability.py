@@ -19,7 +19,9 @@ DENY = [
     ("the dev machine's name", re.compile(_J(["crea", "ture"]), re.I)),
     ("the private network name", re.compile(_J(["tailc", "39d0c"]), re.I)),
     ("the hub's name", re.compile(_J(["sin", "-pi"]), re.I)),
-    ("the GitHub account", re.compile(_J(["musicheard", "worldwide"]), re.I)),
+    # The public repository itself lives under that account (Wes, 2026-10-12), so its own address is allowed.
+    ("the GitHub account", re.compile(_J(["musicheard", "worldwide"]) + r"(?!/yourcontent(?:[\s/)>`\]]|\.git|$))",
+                                      re.I)),
     ("a private network address", re.compile(r"\b100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.")),
     ("the word 'un" "censored'", re.compile(_J(["un", "censored"]), re.I)),
     ("an owner model name", re.compile(r"\b" + _J(["u", "c-"]), re.I)),

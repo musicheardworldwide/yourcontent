@@ -474,6 +474,24 @@ function initModels() {
   }
   sel.value = want && c.variants[want] ? want : c.default_variant;
   if (!sel.value && sel.options.length) sel.selectedIndex = 0;
+  applyModel(false);
+}
+function modelInfo() {
+  const vi = S.config && S.config.variant_info;
+  return (vi && vi[$("model").value]) || {};
+}
+function maxRefs() {
+  const n = modelInfo().refs;
+  return typeof n === "number" ? Math.min(n, MAXREFS) : MAXREFS;
+}
+/* A model change sets its recommended steps and how many references it takes (Qwen-Image-2512: none). */
+function applyModel(user) {
+  const vi = modelInfo();
+  if (vi.steps) $("steps").value = vi.steps;
+  renderRefs();
+  if (user && S.refs.length > maxRefs())
+    say("status", maxRefs() ? "This model takes up to " + maxRefs() + " references." :
+      "This model takes no reference pictures: remove them, or pick Qwen-Image 2.1 to use them.", "err");
 }
 function renderRefs() {
   fill($("refs"), 
@@ -481,13 +499,15 @@ function renderRefs() {
       h("b", {text: String(i + 1)}),
       h("button", {type: "button", text: "×", title: "Remove from references", "aria-label": "Remove reference " + (i + 1),
         on: {click: () => { S.refs.splice(i, 1); renderRefs(); }}}))),
-    S.refs.length < MAXREFS ? h("button", {class: "ghost add", type: "button", text: "+", title: "Upload pictures",
+    S.refs.length < maxRefs() ? h("button", {class: "ghost add", type: "button", text: "+", title: "Upload pictures",
       "aria-label": "Upload reference pictures", on: {click: () => $("file").click()}}) : null,
-    S.refs.length ? null : h("span", {class: "tip", text: "No references: plain text-to-image."}));
+    S.refs.length ? null : h("span", {class: "tip", text: maxRefs() ? "No references: plain text-to-image." :
+      "This model is text-to-image only; pick Qwen-Image 2.1 (non-commercial) under Advanced to use references."}));
 }
 function addRef(it) {
   if (!it || it.type !== "image") { say("status", "References must be pictures.", "err"); return; }
-  if (S.refs.length >= MAXREFS) { say("status", "Up to " + MAXREFS + " references.", "err"); return; }
+  if (!maxRefs()) { say("status", "This model takes no reference pictures; pick Qwen-Image 2.1 under Advanced to use them.", "err"); return; }
+  if (S.refs.length >= maxRefs()) { say("status", "Up to " + maxRefs() + " references.", "err"); return; }
   if (S.refs.some(r => sameRef(r.ref, it.ref))) return;
   S.refs.push({ref: it.ref, url: it.url, w: it.w, h: it.h});
   renderRefs();
@@ -516,6 +536,7 @@ async function generate() {
   if (why) { say("status", why, "err"); return; }
   const size = $("size").value;
   if (size === "match" && !S.refs.length) { say("status", "“Match ref 1” needs a reference.", "err"); return; }
+  if (S.refs.length > maxRefs()) { applyModel(true); return; }
   const body = {prompt, negative: $("negative").value, variant: $("model").value, size,
     steps: clamp(Math.round(+$("steps").value || 30), 4, 60), refs: S.refs.map(r => r.ref)};
   const seed = $("seed").value.trim();
@@ -1190,7 +1211,7 @@ function bind() {
     if (b.dataset.tab === "cut") b.addEventListener("dragenter", e => { if (ourDrag(e)) setTab("cut"); });
   }
   // picture
-  on("model", "change", () => lsSet("ml-model", $("model").value));
+  on("model", "change", () => { lsSet("ml-model", $("model").value); applyModel(true); });
   on("go", "click", generate);
   on("prompt", "keydown", e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) generate(); });
   on("file", "change", e => { uploadRefs([...e.target.files]); e.target.value = ""; });

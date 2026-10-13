@@ -1,6 +1,6 @@
 """ffprobe/ffmpeg helpers: argv lists only, never a shell; every call has a timeout (§4). Owner: WP1.
 
-`configure(cfg)` (or the MEDIA_LAB_DATA env) tells this module where DATA is, for the probe cache, the
+`configure(cfg)` (or the YOURCONTENT_DATA env) tells this module where DATA is, for the probe cache, the
 music conform cache and (through export) the render caches.
 """
 from __future__ import annotations
@@ -17,6 +17,7 @@ import time
 from fractions import Fraction
 from typing import Callable
 
+from . import config as _config
 from .types import Probe
 
 FFMPEG = "ffmpeg"
@@ -51,9 +52,9 @@ def configure(cfg) -> None:
 
 
 def data_dir() -> str:
-    d = _data_dir or os.environ.get("MEDIA_LAB_DATA")
+    d = _data_dir or _config.env("DATA")
     if not d:
-        raise RuntimeError("media.configure() was not called and MEDIA_LAB_DATA is not set")
+        raise RuntimeError("media.configure() was not called and YOURCONTENT_DATA is not set")
     return os.path.abspath(d)
 
 
