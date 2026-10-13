@@ -1,0 +1,964 @@
+{
+ "graphs": {
+  "image_0": {
+   "1": {
+    "class_type": "UNETLoader",
+    "inputs": {
+     "unet_name": "qwen_image_2.1_bf16.safetensors",
+     "weight_dtype": "default"
+    }
+   },
+   "2": {
+    "class_type": "CLIPLoader",
+    "inputs": {
+     "clip_name": "qwen3vl_8b_int8_convrot.safetensors",
+     "device": "default",
+     "type": "qwen_image"
+    }
+   },
+   "3": {
+    "class_type": "VAELoader",
+    "inputs": {
+     "vae_name": "qwen_image_2.1_vae_bf16.safetensors"
+    }
+   },
+   "4": {
+    "class_type": "TextEncodeQwenImage21",
+    "inputs": {
+     "clip": [
+      "2",
+      0
+     ],
+     "negative_prompt": "blurry",
+     "prompt": "a cat",
+     "resolution": 1328
+    }
+   },
+   "5": {
+    "class_type": "EmptyLatentImage",
+    "inputs": {
+     "batch_size": 1,
+     "height": 1328,
+     "width": 1328
+    }
+   },
+   "6": {
+    "class_type": "KSampler",
+    "inputs": {
+     "cfg": 1.0,
+     "denoise": 1.0,
+     "latent_image": [
+      "5",
+      0
+     ],
+     "model": [
+      "1",
+      0
+     ],
+     "negative": [
+      "4",
+      1
+     ],
+     "positive": [
+      "4",
+      0
+     ],
+     "sampler_name": "euler",
+     "scheduler": "simple",
+     "seed": 42,
+     "steps": 30
+    }
+   },
+   "7": {
+    "class_type": "VAEDecode",
+    "inputs": {
+     "samples": [
+      "6",
+      0
+     ],
+     "vae": [
+      "3",
+      0
+     ]
+    }
+   },
+   "8": {
+    "class_type": "SaveImage",
+    "inputs": {
+     "filename_prefix": "qwen_studio",
+     "images": [
+      "7",
+      0
+     ]
+    }
+   }
+  },
+  "image_1": {
+   "1": {
+    "class_type": "UNETLoader",
+    "inputs": {
+     "unet_name": "qwen_image_2.1_bf16.safetensors",
+     "weight_dtype": "default"
+    }
+   },
+   "2": {
+    "class_type": "CLIPLoader",
+    "inputs": {
+     "clip_name": "qwen3vl_8b_int8_convrot.safetensors",
+     "device": "default",
+     "type": "qwen_image"
+    }
+   },
+   "3": {
+    "class_type": "VAELoader",
+    "inputs": {
+     "vae_name": "qwen_image_2.1_vae_bf16.safetensors"
+    }
+   },
+   "4": {
+    "class_type": "TextEncodeQwenImage21",
+    "inputs": {
+     "clip": [
+      "2",
+      0
+     ],
+     "images.image_1": [
+      "r1",
+      0
+     ],
+     "negative_prompt": "blurry",
+     "prompt": "a cat",
+     "resolution": 1472,
+     "vae": [
+      "3",
+      0
+     ]
+    }
+   },
+   "5": {
+    "class_type": "EmptyLatentImage",
+    "inputs": {
+     "batch_size": 1,
+     "height": 1472,
+     "width": 1104
+    }
+   },
+   "6": {
+    "class_type": "KSampler",
+    "inputs": {
+     "cfg": 1.0,
+     "denoise": 1.0,
+     "latent_image": [
+      "5",
+      0
+     ],
+     "model": [
+      "1",
+      0
+     ],
+     "negative": [
+      "4",
+      1
+     ],
+     "positive": [
+      "4",
+      0
+     ],
+     "sampler_name": "euler",
+     "scheduler": "simple",
+     "seed": 42,
+     "steps": 30
+    }
+   },
+   "7": {
+    "class_type": "VAEDecode",
+    "inputs": {
+     "samples": [
+      "6",
+      0
+     ],
+     "vae": [
+      "3",
+      0
+     ]
+    }
+   },
+   "8": {
+    "class_type": "SaveImage",
+    "inputs": {
+     "filename_prefix": "qwen_studio",
+     "images": [
+      "7",
+      0
+     ]
+    }
+   },
+   "r1": {
+    "class_type": "LoadImage",
+    "inputs": {
+     "image": "qwen_studio_00001_.png [output]"
+    }
+   }
+  },
+  "image_6": {
+   "1": {
+    "class_type": "UNETLoader",
+    "inputs": {
+     "unet_name": "qwen_image_2.1_bf16.safetensors",
+     "weight_dtype": "default"
+    }
+   },
+   "2": {
+    "class_type": "CLIPLoader",
+    "inputs": {
+     "clip_name": "qwen3vl_8b_int8_convrot.safetensors",
+     "device": "default",
+     "type": "qwen_image"
+    }
+   },
+   "3": {
+    "class_type": "VAELoader",
+    "inputs": {
+     "vae_name": "qwen_image_2.1_vae_bf16.safetensors"
+    }
+   },
+   "4": {
+    "class_type": "TextEncodeQwenImage21",
+    "inputs": {
+     "clip": [
+      "2",
+      0
+     ],
+     "images.image_1": [
+      "r1",
+      0
+     ],
+     "images.image_2": [
+      "r2",
+      0
+     ],
+     "images.image_3": [
+      "r3",
+      0
+     ],
+     "images.image_4": [
+      "r4",
+      0
+     ],
+     "images.image_5": [
+      "r5",
+      0
+     ],
+     "images.image_6": [
+      "r6",
+      0
+     ],
+     "negative_prompt": "",
+     "prompt": "a cat",
+     "resolution": 1472,
+     "vae": [
+      "3",
+      0
+     ]
+    }
+   },
+   "5": {
+    "class_type": "EmptyLatentImage",
+    "inputs": {
+     "batch_size": 1,
+     "height": 1104,
+     "width": 1472
+    }
+   },
+   "6": {
+    "class_type": "KSampler",
+    "inputs": {
+     "cfg": 1.0,
+     "denoise": 1.0,
+     "latent_image": [
+      "5",
+      0
+     ],
+     "model": [
+      "1",
+      0
+     ],
+     "negative": [
+      "4",
+      1
+     ],
+     "positive": [
+      "4",
+      0
+     ],
+     "sampler_name": "euler",
+     "scheduler": "simple",
+     "seed": 7,
+     "steps": 20
+    }
+   },
+   "7": {
+    "class_type": "VAEDecode",
+    "inputs": {
+     "samples": [
+      "6",
+      0
+     ],
+     "vae": [
+      "3",
+      0
+     ]
+    }
+   },
+   "8": {
+    "class_type": "SaveImage",
+    "inputs": {
+     "filename_prefix": "qwen_studio",
+     "images": [
+      "7",
+      0
+     ]
+    }
+   },
+   "r1": {
+    "class_type": "LoadImage",
+    "inputs": {
+     "image": "pic_1.png [output]"
+    }
+   },
+   "r2": {
+    "class_type": "LoadImage",
+    "inputs": {
+     "image": "pic_2.png [output]"
+    }
+   },
+   "r3": {
+    "class_type": "LoadImage",
+    "inputs": {
+     "image": "pic_3.png [output]"
+    }
+   },
+   "r4": {
+    "class_type": "LoadImage",
+    "inputs": {
+     "image": "pic_4.png [output]"
+    }
+   },
+   "r5": {
+    "class_type": "LoadImage",
+    "inputs": {
+     "image": "pic_5.png [output]"
+    }
+   },
+   "r6": {
+    "class_type": "LoadImage",
+    "inputs": {
+     "image": "pic_6.png [output]"
+    }
+   }
+  },
+  "image_lora": {
+   "1": {
+    "class_type": "UNETLoader",
+    "inputs": {
+     "unet_name": "qwen_image_2.1_bf16.safetensors",
+     "weight_dtype": "default"
+    }
+   },
+   "2": {
+    "class_type": "CLIPLoader",
+    "inputs": {
+     "clip_name": "qwen3vl_8b_int8_convrot.safetensors",
+     "device": "default",
+     "type": "qwen_image"
+    }
+   },
+   "3": {
+    "class_type": "VAELoader",
+    "inputs": {
+     "vae_name": "qwen_image_2.1_vae_bf16.safetensors"
+    }
+   },
+   "4": {
+    "class_type": "TextEncodeQwenImage21",
+    "inputs": {
+     "clip": [
+      "2",
+      0
+     ],
+     "negative_prompt": "",
+     "prompt": "a cat",
+     "resolution": 1328
+    }
+   },
+   "5": {
+    "class_type": "EmptyLatentImage",
+    "inputs": {
+     "batch_size": 1,
+     "height": 1328,
+     "width": 1328
+    }
+   },
+   "6": {
+    "class_type": "KSampler",
+    "inputs": {
+     "cfg": 1.0,
+     "denoise": 1.0,
+     "latent_image": [
+      "5",
+      0
+     ],
+     "model": [
+      "9",
+      0
+     ],
+     "negative": [
+      "4",
+      1
+     ],
+     "positive": [
+      "4",
+      0
+     ],
+     "sampler_name": "euler",
+     "scheduler": "simple",
+     "seed": 42,
+     "steps": 30
+    }
+   },
+   "7": {
+    "class_type": "VAEDecode",
+    "inputs": {
+     "samples": [
+      "6",
+      0
+     ],
+     "vae": [
+      "3",
+      0
+     ]
+    }
+   },
+   "8": {
+    "class_type": "SaveImage",
+    "inputs": {
+     "filename_prefix": "qwen_studio",
+     "images": [
+      "7",
+      0
+     ]
+    }
+   },
+   "9": {
+    "class_type": "LoraLoaderModelOnly",
+    "inputs": {
+     "lora_name": "test_lora.safetensors",
+     "model": [
+      "1",
+      0
+     ],
+     "strength_model": 1.0
+    }
+   }
+  },
+  "video": {
+   "10": {
+    "class_type": "UNETLoader",
+    "inputs": {
+     "unet_name": "wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors",
+     "weight_dtype": "default"
+    }
+   },
+   "11": {
+    "class_type": "LoraLoaderModelOnly",
+    "inputs": {
+     "lora_name": "wan2.2_i2v_lightx2v_4steps_lora_v1_high_noise.safetensors",
+     "model": [
+      "10",
+      0
+     ],
+     "strength_model": 1.0
+    }
+   },
+   "12": {
+    "class_type": "ModelSamplingSD3",
+    "inputs": {
+     "model": [
+      "11",
+      0
+     ],
+     "shift": 5.0
+    }
+   },
+   "20": {
+    "class_type": "UNETLoader",
+    "inputs": {
+     "unet_name": "wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors",
+     "weight_dtype": "default"
+    }
+   },
+   "21": {
+    "class_type": "LoraLoaderModelOnly",
+    "inputs": {
+     "lora_name": "wan2.2_i2v_lightx2v_4steps_lora_v1_low_noise.safetensors",
+     "model": [
+      "20",
+      0
+     ],
+     "strength_model": 1.0
+    }
+   },
+   "22": {
+    "class_type": "ModelSamplingSD3",
+    "inputs": {
+     "model": [
+      "21",
+      0
+     ],
+     "shift": 5.0
+    }
+   },
+   "30": {
+    "class_type": "CLIPLoader",
+    "inputs": {
+     "clip_name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+     "device": "default",
+     "type": "wan"
+    }
+   },
+   "31": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+     "clip": [
+      "30",
+      0
+     ],
+     "text": "slow push in"
+    }
+   },
+   "32": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+     "clip": [
+      "30",
+      0
+     ],
+     "text": "static, frozen, blurry, distorted, deformed, low quality, watermark, text, subtitles"
+    }
+   },
+   "33": {
+    "class_type": "VAELoader",
+    "inputs": {
+     "vae_name": "wan_2.1_vae.safetensors"
+    }
+   },
+   "34": {
+    "class_type": "LoadImage",
+    "inputs": {
+     "image": "qwen_studio_00001_.png [output]"
+    }
+   },
+   "35": {
+    "class_type": "WanImageToVideo",
+    "inputs": {
+     "batch_size": 1,
+     "height": 480,
+     "length": 49,
+     "negative": [
+      "32",
+      0
+     ],
+     "positive": [
+      "31",
+      0
+     ],
+     "start_image": [
+      "34",
+      0
+     ],
+     "vae": [
+      "33",
+      0
+     ],
+     "width": 832
+    }
+   },
+   "40": {
+    "class_type": "KSamplerAdvanced",
+    "inputs": {
+     "add_noise": "enable",
+     "cfg": 1.0,
+     "end_at_step": 2,
+     "latent_image": [
+      "35",
+      2
+     ],
+     "model": [
+      "12",
+      0
+     ],
+     "negative": [
+      "35",
+      1
+     ],
+     "noise_seed": 123,
+     "positive": [
+      "35",
+      0
+     ],
+     "return_with_leftover_noise": "enable",
+     "sampler_name": "euler",
+     "scheduler": "simple",
+     "start_at_step": 0,
+     "steps": 4
+    }
+   },
+   "41": {
+    "class_type": "KSamplerAdvanced",
+    "inputs": {
+     "add_noise": "disable",
+     "cfg": 1.0,
+     "end_at_step": 10000,
+     "latent_image": [
+      "40",
+      0
+     ],
+     "model": [
+      "22",
+      0
+     ],
+     "negative": [
+      "35",
+      1
+     ],
+     "noise_seed": 123,
+     "positive": [
+      "35",
+      0
+     ],
+     "return_with_leftover_noise": "disable",
+     "sampler_name": "euler",
+     "scheduler": "simple",
+     "start_at_step": 2,
+     "steps": 4
+    }
+   },
+   "42": {
+    "class_type": "VAEDecode",
+    "inputs": {
+     "samples": [
+      "41",
+      0
+     ],
+     "vae": [
+      "33",
+      0
+     ]
+    }
+   },
+   "43": {
+    "class_type": "VHS_VideoCombine",
+    "inputs": {
+     "filename_prefix": "qwen_video",
+     "format": "video/h264-mp4",
+     "frame_rate": 16,
+     "images": [
+      "42",
+      0
+     ],
+     "loop_count": 0,
+     "pingpong": false,
+     "save_output": true
+    }
+   }
+  },
+  "video_5s": {
+   "10": {
+    "class_type": "UNETLoader",
+    "inputs": {
+     "unet_name": "wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors",
+     "weight_dtype": "default"
+    }
+   },
+   "11": {
+    "class_type": "LoraLoaderModelOnly",
+    "inputs": {
+     "lora_name": "wan2.2_i2v_lightx2v_4steps_lora_v1_high_noise.safetensors",
+     "model": [
+      "10",
+      0
+     ],
+     "strength_model": 1.0
+    }
+   },
+   "12": {
+    "class_type": "ModelSamplingSD3",
+    "inputs": {
+     "model": [
+      "11",
+      0
+     ],
+     "shift": 5.0
+    }
+   },
+   "20": {
+    "class_type": "UNETLoader",
+    "inputs": {
+     "unet_name": "wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors",
+     "weight_dtype": "default"
+    }
+   },
+   "21": {
+    "class_type": "LoraLoaderModelOnly",
+    "inputs": {
+     "lora_name": "wan2.2_i2v_lightx2v_4steps_lora_v1_low_noise.safetensors",
+     "model": [
+      "20",
+      0
+     ],
+     "strength_model": 1.0
+    }
+   },
+   "22": {
+    "class_type": "ModelSamplingSD3",
+    "inputs": {
+     "model": [
+      "21",
+      0
+     ],
+     "shift": 5.0
+    }
+   },
+   "30": {
+    "class_type": "CLIPLoader",
+    "inputs": {
+     "clip_name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+     "device": "default",
+     "type": "wan"
+    }
+   },
+   "31": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+     "clip": [
+      "30",
+      0
+     ],
+     "text": "more"
+    }
+   },
+   "32": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+     "clip": [
+      "30",
+      0
+     ],
+     "text": "static, frozen, blurry, distorted, deformed, low quality, watermark, text, subtitles"
+    }
+   },
+   "33": {
+    "class_type": "VAELoader",
+    "inputs": {
+     "vae_name": "wan_2.1_vae.safetensors"
+    }
+   },
+   "34": {
+    "class_type": "LoadImage",
+    "inputs": {
+     "image": "qwen_studio/lastframe_x.png"
+    }
+   },
+   "35": {
+    "class_type": "WanImageToVideo",
+    "inputs": {
+     "batch_size": 1,
+     "height": 624,
+     "length": 81,
+     "negative": [
+      "32",
+      0
+     ],
+     "positive": [
+      "31",
+      0
+     ],
+     "start_image": [
+      "34",
+      0
+     ],
+     "vae": [
+      "33",
+      0
+     ],
+     "width": 624
+    }
+   },
+   "40": {
+    "class_type": "KSamplerAdvanced",
+    "inputs": {
+     "add_noise": "enable",
+     "cfg": 1.0,
+     "end_at_step": 2,
+     "latent_image": [
+      "35",
+      2
+     ],
+     "model": [
+      "12",
+      0
+     ],
+     "negative": [
+      "35",
+      1
+     ],
+     "noise_seed": 9,
+     "positive": [
+      "35",
+      0
+     ],
+     "return_with_leftover_noise": "enable",
+     "sampler_name": "euler",
+     "scheduler": "simple",
+     "start_at_step": 0,
+     "steps": 4
+    }
+   },
+   "41": {
+    "class_type": "KSamplerAdvanced",
+    "inputs": {
+     "add_noise": "disable",
+     "cfg": 1.0,
+     "end_at_step": 10000,
+     "latent_image": [
+      "40",
+      0
+     ],
+     "model": [
+      "22",
+      0
+     ],
+     "negative": [
+      "35",
+      1
+     ],
+     "noise_seed": 9,
+     "positive": [
+      "35",
+      0
+     ],
+     "return_with_leftover_noise": "disable",
+     "sampler_name": "euler",
+     "scheduler": "simple",
+     "start_at_step": 2,
+     "steps": 4
+    }
+   },
+   "42": {
+    "class_type": "VAEDecode",
+    "inputs": {
+     "samples": [
+      "41",
+      0
+     ],
+     "vae": [
+      "33",
+      0
+     ]
+    }
+   },
+   "43": {
+    "class_type": "VHS_VideoCombine",
+    "inputs": {
+     "filename_prefix": "qwen_video",
+     "format": "video/h264-mp4",
+     "frame_rate": 16,
+     "images": [
+      "42",
+      0
+     ],
+     "loop_count": 0,
+     "pingpong": false,
+     "save_output": true
+    }
+   }
+  }
+ },
+ "meta": {
+  "_about": "Graphs captured from the pre-v1 app.py (qwen-studio) on 2026-10-07 with a neutral model table; prefixes qwen_studio / qwen_video are the pre-v1 ones.",
+  "image_0": {
+   "args": [
+    "a cat",
+    "blurry",
+    1328,
+    1328,
+    30,
+    42,
+    []
+   ]
+  },
+  "image_1": {
+   "args": [
+    "a cat",
+    "blurry",
+    1104,
+    1472,
+    30,
+    42,
+    [
+     "qwen_studio_00001_.png [output]"
+    ]
+   ]
+  },
+  "image_6": {
+   "args": [
+    "a cat",
+    "",
+    1472,
+    1104,
+    20,
+    7,
+    [
+     "pic_1.png [output]",
+     "pic_2.png [output]",
+     "pic_3.png [output]",
+     "pic_4.png [output]",
+     "pic_5.png [output]",
+     "pic_6.png [output]"
+    ]
+   ]
+  },
+  "image_lora": {
+   "args": [
+    "a cat",
+    "",
+    1328,
+    1328,
+    30,
+    42,
+    []
+   ],
+   "lora": "test_lora.safetensors"
+  },
+  "video": {
+   "args": [
+    "qwen_studio_00001_.png [output]",
+    "slow push in",
+    832,
+    480,
+    49,
+    123
+   ]
+  },
+  "video_5s": {
+   "args": [
+    "qwen_studio/lastframe_x.png",
+    "more",
+    624,
+    624,
+    81,
+    9
+   ]
+  }
+ }
+}

@@ -1,0 +1,2080 @@
+{
+ "openapi": "3.1.0",
+ "info": {
+  "title": "YourContent",
+  "version": "0.2.0",
+  "license": {
+   "name": "PolyForm Small Business 1.0.0",
+   "url": "https://polyformproject.org/licenses/small-business/1.0.0"
+  }
+ },
+ "components": {
+  "securitySchemes": {
+   "bearer": {
+    "type": "http",
+    "scheme": "bearer",
+    "description": "owner token or mla_ agent token; not needed on a loopback-only install"
+   }
+  }
+ },
+ "security": [
+  {},
+  {
+   "bearer": []
+  }
+ ],
+ "paths": {
+  "/api/agents": {
+   "get": {
+    "operationId": "get_api_agents",
+    "summary": "Agent tokens (without secrets) and the setup-prompt presets (owner only).",
+    "responses": {
+     "200": {
+      "description": "JSON"
+     },
+     "4XX": {
+      "description": "{\"error\": message}"
+     }
+    }
+   },
+   "post": {
+    "operationId": "post_api_agents",
+    "summary": "Make an agent token and its setup prompt; the token is shown once (owner only).",
+    "responses": {
+     "200": {
+      "description": "JSON"
+     },
+     "4XX": {
+      "description": "{\"error\": message}"
+     }
+    },
+    "parameters": [
+     {
+      "name": "X-Media-Lab",
+      "in": "header",
+      "required": true,
+      "schema": {
+       "const": "1"
+      },
+      "description": "required on every POST except /mcp"
+     }
+    ],
+    "requestBody": {
+     "required": false,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object"
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/agents/{p1}/revoke": {
+   "post": {
+    "operationId": "post_api_agents_p1_revoke",
+    "summary": "Revoke an agent token (owner only).",
+    "responses": {
+     "200": {
+      "description": "JSON"
+     },
+     "4XX": {
+      "description": "{\"error\": message}"
+     }
+    },
+    "parameters": [
+     {
+      "name": "p1",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     },
+     {
+      "name": "X-Media-Lab",
+      "in": "header",
+      "required": true,
+      "schema": {
+       "const": "1"
+      },
+      "description": "required on every POST except /mcp"
+     }
+    ],
+    "requestBody": {
+     "required": false,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object"
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/animate": {
+   "post": {
+    "operationId": "post_api_animate",
+    "summary": "Start a clip job that animates a picture (3 or 5 seconds).",
+    "responses": {
+     "200": {
+      "description": "JSON"
+     },
+     "4XX": {
+      "description": "{\"error\": message}"
+     }
+    },
+    "parameters": [
+     {
+      "name": "X-Media-Lab",
+      "in": "header",
+      "required": true,
+      "schema": {
+       "const": "1"
+      },
+      "description": "required on every POST except /mcp"
+     }
+    ],
+    "requestBody": {
+     "required": false,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "start": {
+          "type": "object",
+          "description": "a file reference as returned by list_media: {root, name}",
+          "properties": {
+           "root": {
+            "type": "string"
+           },
+           "name": {
+            "type": "string"
+           }
+          },
+          "required": [
+           "root",
+           "name"
+          ]
+         },
+         "prompt": {
+          "type": "string"
+         },
+         "seconds": {
+          "enum": [
+           3,
+           5
+          ]
+         },
+         "quality": {
+          "enum": [
+           "480p",
+           "720p"
+          ]
+         },
+         "seed": {
+          "type": "integer"
+         }
+        },
+        "additionalProperties": false,
+        "required": [
+         "start"
+        ]
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/brandkits": {
+   "get": {
+    "operationId": "get_api_brandkits",
+    "summary": "The owner's brand kits (colours, fonts, logo, voice).",
+    "responses": {
+     "200": {
+      "description": "JSON"
+     },
+     "4XX": {
+      "description": "{\"error\": message}"
+     }
+    }
+   },
+   "post": {
+    "operationId": "post_api_brandkits",
+    "summary": "Make a brand kit (name, colours, fonts, logo ref, handle, voice, default styles).",
+    "responses": {
+     "200": {
+      "description": "JSON"
+     },
+     "4XX": {
+      "description": "{\"error\": message}"
+     }
+    },
+    "parameters": [
+     {
+      "name": "X-Media-Lab",
+      "in": "header",
+      "required": true,
+      "schema": {
+       "const": "1"
+      },
+      "description": "required on every POST except /mcp"
+     }
+    ],
+    "requestBody": {
+     "required": false,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object"
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/brandkits/{p1}": {
+   "post": {
+    "operationId": "post_api_brandkits_p1",
+    "summary": "Replace a brand kit.",
+    "responses": {
+     "200": {
+      "description": "JSON"
+     },
+     "4XX": {
+      "description": "{\"error\": message}"
+     }
+    },
+    "parameters": [
+     {
+      "name": "p1",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     },
+     {
+      "name": "X-Media-Lab",
+      "in": "header",
+      "required": true,
+      "schema": {
+       "const": "1"
+      },
+      "description": "required on every POST except /mcp"
+     }
+    ],
+    "requestBody": {
+     "required": false,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object"
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/brandkits/{p1}/delete": {
+   "post": {
+    "operationId": "post_api_brandkits_p1_delete",
+    "summary": "Delete a brand kit (owner only).",
+    "responses": {
+     "200": {
+      "description": "JSON"
+     },
+     "4XX": {
+      "description": "{\"error\": message}"
+     }
+    },
+    "parameters": [
+     {
+      "name": "p1",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     },
+     {
+      "name": "X-Media-Lab",
+      "in": "header",
+      "required": true,
+      "schema": {
+       "const": "1"
+      },
+      "description": "required on every POST except /mcp"
+     }
+    ],
+    "requestBody": {
+     "required": false,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object"
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/calendar": {
+   "get": {
+    "operationId": "get_api_calendar",
+    "summary": "Content calendar entries between two dates (YYYY-MM-DD).",
+    "responses": {
+     "200": {
+      "description": "JSON"
+     },
+     "4XX": {
+      "description": "{\"error\": message}"
+     }
+    }
+   },
+   "post": {
+    "operationId": "post_api_calendar",
+    "summary": "Add a calendar entry. Put finished work on it with status 'ready' and the file as asset.",
+    "responses": {
+     "200": {
+      "description": "JSON"
+     },
+     "4XX": {
+      "description": "{\"error\": message}"
+     }
+    },
+    "parameters": [
+     {
+      "name": "X-Media-Lab",
+      "in": "header",
+      "required": true,
+      "schema": {
+       "const": "1"
+      },
+      "description": "required on every POST except /mcp"
+     }
+    ],
+    "requestBody": {
+     "required": false,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "when": {
+          "type": "string",
+          "description": "YYYY-MM-DD (all day) or YYYY-MM-DDTHH:MM[+offset]"
+         },
+         "duration_min": {
+          "type": "integer"
+         },
+         "channel": {
+          "type": "string",
+          "description": "e.g. instagram_reel"
+         },
+         "title": {
+          "type": "string"
+         },
+         "caption": {
+          "type": "string"
+         },
+         "status": {
+          "enum": [
+           "idea",
+           "draft",
+           "ready",
+           "posted",
+           "skipped"
+          ]
+         },
+         "project": {
+          "type": "string"
+         },
+         "asset": {
+          "type": "object",
+          "description": "a file reference as returned by list_media: {root, name}",
+          "properties": {
+           "root": {
+            "type": "string"
+           },
+           "name": {
+            "type": "string"
+           }
+          },
+          "required": [
+           "root",
+           "name"
+          ]
+         }
+        },
+        "additionalProperties": false,
+        "required": [
+         "when",
+         "title"
+        ]
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/calendar.ics": {
+   "get": {
+    "operationId": "get_api_calendar_ics",
+    "summary": "The calendar as an iCalendar file (from, to optional).",
+    "responses": {
+     "200": {
+      "description": "JSON"
+     },
+     "4XX": {
+      "description": "{\"error\": message}"
+     }
+    }
+   }
+  },
+  "/api/calendar/feed": {
+   "get": {
+    "operationId": "get_api_calendar_feed",
+    "summary": "The private subscribe link for calendar apps (owner only).",
+    "responses": {
+     "200": {
+      "description": "JSON"
+     },
+     "4XX": {
+      "description": "{\"error\": message}"
+     }
+    }
+   }
+  },
+  "/api/calendar/feed/rotate": {
+   "post": {
+    "operationId": "post_api_calendar_feed_rotate",
+    "summary": "Replace the subscribe link; the old one stops working (owner only).",
+    "responses": {
+     "200": {
+      "description": "JSON"
+     },
+     "4XX": {
+      "description": "{\"error\": message}"
+     }
+    },
+    "parameters": [
+     {
+      "name": "X-Media-Lab",
+      "in": "header",
+      "required": true,
+      "schema": {
+       "const": "1"
+      },
+      "description": "required on every POST except /mcp"
+     }
+    ],
+    "requestBody": {
+     "required": false,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object"
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/calendar/feed/{p1}.ics": {
+   "get": {
+    "operationId": "get_api_calendar_feed_p1_ics",
+    "summary": "The calendar feed for calendar apps; the secret in the path is the credential.",
+    "responses": {
+     "200": {
+      "description": "JSON"
+     },
+     "4XX": {
+      "description": "{\"error\": message}"
+     }
+    },
+    "parameters": [
+     {
+      "name": "p1",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ]
+   }
+  },
+  "/api/calendar/{p1}": {
+   "post": {
+    "operationId": "post_api_calendar_p1",
+    "summary": "Change a calendar entry: send its rev and only the fields that change.",
+    "responses": {
+     "200": {
+      "description": "JSON"
+     },
+     "4XX": {
+      "description": "{\"error\": message}"
+     }
+    },
+    "parameters": [
+     {
+      "name": "p1",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     },
+     {
+      "name": "X-Media-Lab",
+      "in": "header",
+      "required": true,
+      "schema": {
+       "const": "1"
+      },
+      "description": "required on every POST except /mcp"
+     }
+    ],
+    "requestBody": {
+     "required": false,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "id": {
+          "type": "string"
+         },
+         "rev": {
+          "type": "integer"
+         },
+         "when": {
+          "type": "string",
+          "description": "YYYY-MM-DD (all day) or YYYY-MM-DDTHH:MM[+offset]"
+         },
+         "duration_min": {
+          "type": "integer"
+         },
+         "channel": {
+          "type": "string",
+          "description": "e.g. instagram_reel"
+         },
+         "title": {
+          "type": "string"
+         },
+         "caption": {
+          "type": "string"
+         },
+         "status": {
+          "enum": [
+           "idea",
+           "draft",
+           "ready",
+           "posted",
+           "skipped"
+          ]
+         },
+         "project": {
+          "type": "string"
+         },
+         "asset": {
+          "type": "object",
+          "description": "a file reference as returned by list_media: {root, name}",
+          "properties": {
+           "root": {
+            "type": "string"
+           },
+           "name": {
+            "type": "string"
+           }
+          },
+          "required": [
+           "root",
+           "name"
+          ]
+         }
+        },
+        "additionalProperties": false,
+        "required": [
+         "id",
+         "rev"
+        ]
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/calendar/{p1}/delete": {
+   "post": {
+    "operationId": "post_api_calendar_p1_delete",
+    "summary": "Delete a calendar entry (owner only).",
+    "responses": {
+     "200": {
+      "description": "JSON"
+     },
+     "4XX": {
+      "description": "{\"error\": message}"
+     }
+    },
+    "parameters": [
+     {
+      "name": "p1",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     },
+     {
+      "name": "X-Media-Lab",
+      "in": "header",
+      "required": true,
+      "schema": {
+       "const": "1"
+      },
+      "description": "required on every POST except /mcp"
+     }
+    ],
+    "requestBody": {
+     "required": false,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object"
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/config": {
+   "get": {
+    "operationId": "get_api_config",
+    "summary": "Limits, presets, model choices and licence rows for the page, and how the app is reached: listens (address), loopback_only, token_required (no credential needed).",
+    "responses": {
+     "200": {
+      "description": "JSON"
+     },
+     "4XX": {
+      "description": "{\"error\": message}"
+     }
+    }
+   }
+  },
+  "/api/craft": {
+   "get": {
+    "operationId": "get_api_craft",
+    "summary": "Recent craft jobs and the recipe service's state.",
+    "responses": {
+     "200": {
+      "description": "JSON"
+     },
+     "4XX": {
+      "description": "{\"error\": message}"
+     }
+    }
+   },
+   "post": {
+    "operationId": "post_api_craft",
+    "summary": "Start a photo/video recipe job; params per recipe are listed by craft_recipes.",
+    "responses": {
+     "200": {
+      "description": "JSON"
+     },
+     "4XX": {
+      "description": "{\"error\": message}"
+     }
+    },
+    "parameters": [
+     {
+      "name": "X-Media-Lab",
+      "in": "header",
+      "required": true,
+      "schema": {
+       "const": "1"
+      },
+      "description": "required on every POST except /mcp"
+     }
+    ],
+    "requestBody": {
+     "required": false,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "recipe": {
+          "enum": [
+           "photo.grade",
+           "photo.finish",
+           "video.titlecard",
+           "video.reel"
+          ]
+         },
+         "params": {
+          "type": "object"
+         },
+         "brand_kit": {
+          "type": "string"
+         }
+        },
+        "additionalProperties": false,
+        "required": [
+         "recipe",
+         "params"
+        ]
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/craft/recipes": {
+   "get": {
+    "operationId": "get_api_craft_recipes",
+    "summary": "A craft job's state and outputs.",
+    "responses": {
+     "200": {
+      "description": "JSON"
+     },
+     "4XX": {
+      "description": "{\"error\": message}"
+     }
+    }
+   }
+  },
+  "/api/craft/{p1}": {
+   "get": {
+    "operationId": "get_api_craft_p1",
+    "summary": "A craft job's state and outputs.",
+    "responses": {
+     "200": {
+      "description": "JSON"
+     },
+     "4XX": {
+      "description": "{\"error\": message}"
+     }
+    },
+    "parameters": [
+     {
+      "name": "p1",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ]
+   }
+  },
+  "/api/delete": {
+   "post": {
+    "operationId": "post_api_delete",
+    "summary": "Delete a file YourContent made or adopted, for good (owner only).",
+    "responses": {
+     "200": {
+      "description": "JSON"
+     },
+     "4XX": {
+      "description": "{\"error\": message}"
+     }
+    },
+    "parameters": [
+     {
+      "name": "X-Media-Lab",
+      "in": "header",
+      "required": true,
+      "schema": {
+       "const": "1"
+      },
+      "description": "required on every POST except /mcp"
+     }
+    ],
+    "requestBody": {
+     "required": false,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object"
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/extend": {
+   "post": {
+    "operationId": "post_api_extend",
+    "summary": "Start a job that adds 3 or 5 seconds to the end of a clip.",
+    "responses": {
+     "200": {
+      "description": "JSON"
+     },
+     "4XX": {
+      "description": "{\"error\": message}"
+     }
+    },
+    "parameters": [
+     {
+      "name": "X-Media-Lab",
+      "in": "header",
+      "required": true,
+      "schema": {
+       "const": "1"
+      },
+      "description": "required on every POST except /mcp"
+     }
+    ],
+    "requestBody": {
+     "required": false,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "src": {
+          "type": "object",
+          "description": "a file reference as returned by list_media: {root, name}",
+          "properties": {
+           "root": {
+            "type": "string"
+           },
+           "name": {
+            "type": "string"
+           }
+          },
+          "required": [
+           "root",
+           "name"
+          ]
+         },
+         "prompt": {
+          "type": "string"
+         },
+         "seconds": {
+          "enum": [
+           3,
+           5
+          ]
+         },
+         "seed": {
+          "type": "integer"
+         }
+        },
+        "additionalProperties": false,
+        "required": [
+         "src"
+        ]
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/generate": {
+   "post": {
+    "operationId": "post_api_generate",
+    "summary": "Start a picture job from a prompt (optionally up to 6 reference pictures).",
+    "responses": {
+     "200": {
+      "description": "JSON"
+     },
+     "4XX": {
+      "description": "{\"error\": message}"
+     }
+    },
+    "parameters": [
+     {
+      "name": "X-Media-Lab",
+      "in": "header",
+      "required": true,
+      "schema": {
+       "const": "1"
+      },
+      "description": "required on every POST except /mcp"
+     }
+    ],
+    "requestBody": {
+     "required": false,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "prompt": {
+          "type": "string"
+         },
+         "negative": {
+          "type": "string"
+         },
+         "steps": {
+          "type": "integer"
+         },
+         "seed": {
+          "type": "integer"
+         },
+         "refs": {
+          "type": "array",
+          "items": {
+           "type": "object",
+           "description": "a file reference as returned by list_media: {root, name}",
+           "properties": {
+            "root": {
+             "type": "string"
+            },
+            "name": {
+             "type": "string"
+            }
+           },
+           "required": [
+            "root",
+            "name"
+           ]
+          }
+         }
+        },
+        "additionalProperties": false,
+        "required": [
+         "prompt"
+        ]
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/google/bootstrap": {
+   "post": {
+    "operationId": "post_api_google_bootstrap",
+    "summary": "Create or repair the workspace folder, subfolders and Content Plan Sheet.",
+    "responses": {
+     "200": {
+      "description": "JSON"
+     },
+     "4XX": {
+      "description": "{\"error\": message}"
+     }
+    },
+    "parameters": [
+     {
+      "name": "X-Media-Lab",
+      "in": "header",
+      "required": true,
+      "schema": {
+       "const": "1"
+      },
+      "description": "required on every POST except /mcp"
+     }
+    ],
+    "requestBody": {
+     "required": false,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object"
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/google/callback": {
+   "get": {
+    "operationId": "get_api_google_callback",
+    "summary": "Google's redirect back after consent (single-use state).",
+    "responses": {
+     "200": {
+      "description": "JSON"
+     },
+     "4XX": {
+      "description": "{\"error\": message}"
+     }
+    }
+   }
+  },
+  "/api/google/connect": {
+   "post": {
+    "operationId": "post_api_google_connect",
+    "summary": "Start Google sign-in (drive.file access); returns the consent URL (owner only).",
+    "responses": {
+     "200": {
+      "description": "JSON"
+     },
+     "4XX": {
+      "description": "{\"error\": message}"
+     }
+    },
+    "parameters": [
+     {
+      "name": "X-Media-Lab",
+      "in": "header",
+      "required": true,
+      "schema": {
+       "const": "1"
+      },
+      "description": "required on every POST except /mcp"
+     }
+    ],
+    "requestBody": {
+     "required": false,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object"
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/google/disconnect": {
+   "post": {
+    "operationId": "post_api_google_disconnect",
+    "summary": "Revoke Google access and forget the tokens; Drive files stay (owner only).",
+    "responses": {
+     "200": {
+      "description": "JSON"
+     },
+     "4XX": {
+      "description": "{\"error\": message}"
+     }
+    },
+    "parameters": [
+     {
+      "name": "X-Media-Lab",
+      "in": "header",
+      "required": true,
+      "schema": {
+       "const": "1"
+      },
+      "description": "required on every POST except /mcp"
+     }
+    ],
+    "requestBody": {
+     "required": false,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object"
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/google/inbox": {
+   "get": {
+    "operationId": "get_api_google_inbox",
+    "summary": "Files in the workspace's Inbox folder that YourContent can see.",
+    "responses": {
+     "200": {
+      "description": "JSON"
+     },
+     "4XX": {
+      "description": "{\"error\": message}"
+     }
+    }
+   }
+  },
+  "/api/google/inbox/import": {
+   "post": {
+    "operationId": "post_api_google_inbox_import",
+    "summary": "Copy an Inbox file into YourContent's uploads.",
+    "responses": {
+     "200": {
+      "description": "JSON"
+     },
+     "4XX": {
+      "description": "{\"error\": message}"
+     }
+    },
+    "parameters": [
+     {
+      "name": "X-Media-Lab",
+      "in": "header",
+      "required": true,
+      "schema": {
+       "const": "1"
+      },
+      "description": "required on every POST except /mcp"
+     }
+    ],
+    "requestBody": {
+     "required": false,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object"
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/google/manual": {
+   "post": {
+    "operationId": "post_api_google_manual",
+    "summary": "Save pasted folder and Sheet ids as the workspace (links only) (owner only).",
+    "responses": {
+     "200": {
+      "description": "JSON"
+     },
+     "4XX": {
+      "description": "{\"error\": message}"
+     }
+    },
+    "parameters": [
+     {
+      "name": "X-Media-Lab",
+      "in": "header",
+      "required": true,
+      "schema": {
+       "const": "1"
+      },
+      "description": "required on every POST except /mcp"
+     }
+    ],
+    "requestBody": {
+     "required": false,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object"
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/google/status": {
+   "get": {
+    "operationId": "get_api_google_status",
+    "summary": "Whether Google Drive is connected, and the workspace folder and Sheet links.",
+    "responses": {
+     "200": {
+      "description": "JSON"
+     },
+     "4XX": {
+      "description": "{\"error\": message}"
+     }
+    }
+   }
+  },
+  "/api/google/sync": {
+   "post": {
+    "operationId": "post_api_google_sync",
+    "summary": "Sync the calendar with the Content Plan Sheet both ways (the side that changed wins).",
+    "responses": {
+     "200": {
+      "description": "JSON"
+     },
+     "4XX": {
+      "description": "{\"error\": message}"
+     }
+    },
+    "parameters": [
+     {
+      "name": "X-Media-Lab",
+      "in": "header",
+      "required": true,
+      "schema": {
+       "const": "1"
+      },
+      "description": "required on every POST except /mcp"
+     }
+    ],
+    "requestBody": {
+     "required": false,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/google/upload": {
+   "post": {
+    "operationId": "post_api_google_upload",
+    "summary": "Copy a finished file to the Google workspace (folder: rendered or exports).",
+    "responses": {
+     "200": {
+      "description": "JSON"
+     },
+     "4XX": {
+      "description": "{\"error\": message}"
+     }
+    },
+    "parameters": [
+     {
+      "name": "X-Media-Lab",
+      "in": "header",
+      "required": true,
+      "schema": {
+       "const": "1"
+      },
+      "description": "required on every POST except /mcp"
+     }
+    ],
+    "requestBody": {
+     "required": false,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "ref": {
+          "type": "object",
+          "description": "a file reference as returned by list_media: {root, name}",
+          "properties": {
+           "root": {
+            "type": "string"
+           },
+           "name": {
+            "type": "string"
+           }
+          },
+          "required": [
+           "root",
+           "name"
+          ]
+         },
+         "folder": {
+          "enum": [
+           "rendered",
+           "exports"
+          ]
+         }
+        },
+        "additionalProperties": false,
+        "required": [
+         "ref",
+         "folder"
+        ]
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/health": {
+   "get": {
+    "operationId": "get_api_health",
+    "summary": "Which features work right now (models present, ComfyUI up) and why not.",
+    "responses": {
+     "200": {
+      "description": "JSON"
+     },
+     "4XX": {
+      "description": "{\"error\": message}"
+     }
+    }
+   }
+  },
+  "/api/info/{p1}/{p2}": {
+   "get": {
+    "operationId": "get_api_info_p1_p2",
+    "summary": "One file's details and licence record (root, name).",
+    "responses": {
+     "200": {
+      "description": "JSON"
+     },
+     "4XX": {
+      "description": "{\"error\": message}"
+     }
+    },
+    "parameters": [
+     {
+      "name": "p1",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     },
+     {
+      "name": "p2",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ]
+   }
+  },
+  "/api/jobs": {
+   "get": {
+    "operationId": "get_api_jobs",
+    "summary": "All jobs, newest first.",
+    "responses": {
+     "200": {
+      "description": "JSON"
+     },
+     "4XX": {
+      "description": "{\"error\": message}"
+     }
+    }
+   }
+  },
+  "/api/jobs/{p1}": {
+   "get": {
+    "operationId": "get_api_jobs_p1",
+    "summary": "A job's state and result. wait_seconds (up to 110) waits until it finishes.",
+    "responses": {
+     "200": {
+      "description": "JSON"
+     },
+     "4XX": {
+      "description": "{\"error\": message}"
+     }
+    },
+    "parameters": [
+     {
+      "name": "p1",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ]
+   }
+  },
+  "/api/jobs/{p1}/cancel": {
+   "post": {
+    "operationId": "post_api_jobs_p1_cancel",
+    "summary": "Cancel a queued or running job.",
+    "responses": {
+     "200": {
+      "description": "JSON"
+     },
+     "4XX": {
+      "description": "{\"error\": message}"
+     }
+    },
+    "parameters": [
+     {
+      "name": "p1",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     },
+     {
+      "name": "X-Media-Lab",
+      "in": "header",
+      "required": true,
+      "schema": {
+       "const": "1"
+      },
+      "description": "required on every POST except /mcp"
+     }
+    ],
+    "requestBody": {
+     "required": false,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object"
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/login": {
+   "post": {
+    "operationId": "post_api_login",
+    "summary": "Exchange the owner token for a session cookie.",
+    "responses": {
+     "200": {
+      "description": "JSON"
+     },
+     "4XX": {
+      "description": "{\"error\": message}"
+     }
+    },
+    "parameters": [
+     {
+      "name": "X-Media-Lab",
+      "in": "header",
+      "required": true,
+      "schema": {
+       "const": "1"
+      },
+      "description": "required on every POST except /mcp"
+     }
+    ],
+    "requestBody": {
+     "required": false,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object"
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/logout": {
+   "post": {
+    "operationId": "post_api_logout",
+    "summary": "Drop the session cookie.",
+    "responses": {
+     "200": {
+      "description": "JSON"
+     },
+     "4XX": {
+      "description": "{\"error\": message}"
+     }
+    },
+    "parameters": [
+     {
+      "name": "X-Media-Lab",
+      "in": "header",
+      "required": true,
+      "schema": {
+       "const": "1"
+      },
+      "description": "required on every POST except /mcp"
+     }
+    ],
+    "requestBody": {
+     "required": false,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object"
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/music": {
+   "post": {
+    "operationId": "post_api_music",
+    "summary": "Start a music job from style tags (and optional lyrics; '[Instrumental]' for none).",
+    "responses": {
+     "200": {
+      "description": "JSON"
+     },
+     "4XX": {
+      "description": "{\"error\": message}"
+     }
+    },
+    "parameters": [
+     {
+      "name": "X-Media-Lab",
+      "in": "header",
+      "required": true,
+      "schema": {
+       "const": "1"
+      },
+      "description": "required on every POST except /mcp"
+     }
+    ],
+    "requestBody": {
+     "required": false,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "tags": {
+          "type": "string"
+         },
+         "lyrics": {
+          "type": "string"
+         },
+         "bpm": {
+          "type": "integer"
+         },
+         "seconds": {
+          "type": "number"
+         },
+         "project_id": {
+          "type": "string"
+         }
+        },
+        "additionalProperties": false,
+        "required": [
+         "tags"
+        ]
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/openapi.json": {
+   "get": {
+    "operationId": "get_api_openapi_json",
+    "summary": "This document.",
+    "responses": {
+     "200": {
+      "description": "JSON"
+     },
+     "4XX": {
+      "description": "{\"error\": message}"
+     }
+    }
+   }
+  },
+  "/api/posts/health": {
+   "get": {
+    "operationId": "get_api_posts_health",
+    "summary": "Whether the post renderer is up, and why not.",
+    "responses": {
+     "200": {
+      "description": "JSON"
+     },
+     "4XX": {
+      "description": "{\"error\": message}"
+     }
+    }
+   }
+  },
+  "/api/posts/render": {
+   "post": {
+    "operationId": "post_api_posts_render",
+    "summary": "Render a styled post image from a brand kit, a style (list_styles), text and optional pictures. Saved to the library with a licence label; the file is item.ref in the reply.",
+    "responses": {
+     "200": {
+      "description": "JSON"
+     },
+     "4XX": {
+      "description": "{\"error\": message}"
+     }
+    },
+    "parameters": [
+     {
+      "name": "X-Media-Lab",
+      "in": "header",
+      "required": true,
+      "schema": {
+       "const": "1"
+      },
+      "description": "required on every POST except /mcp"
+     }
+    ],
+    "requestBody": {
+     "required": false,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "kit": {
+          "type": "string"
+         },
+         "style": {
+          "type": "string"
+         },
+         "format": {
+          "enum": [
+           "4:5",
+           "1:1",
+           "9:16",
+           "1.91:1"
+          ]
+         },
+         "type": {
+          "enum": [
+           "png",
+           "jpg"
+          ]
+         },
+         "image": {
+          "type": "object",
+          "description": "a file reference as returned by list_media: {root, name}",
+          "properties": {
+           "root": {
+            "type": "string"
+           },
+           "name": {
+            "type": "string"
+           }
+          },
+          "required": [
+           "root",
+           "name"
+          ]
+         },
+         "images": {
+          "type": "array",
+          "items": {
+           "type": "object",
+           "description": "a file reference as returned by list_media: {root, name}",
+           "properties": {
+            "root": {
+             "type": "string"
+            },
+            "name": {
+             "type": "string"
+            }
+           },
+           "required": [
+            "root",
+            "name"
+           ]
+          }
+         },
+         "text": {
+          "type": "object",
+          "properties": {
+           "headline": {
+            "type": "string"
+           },
+           "kicker": {
+            "type": "string"
+           },
+           "body": {
+            "type": "string"
+           },
+           "detail": {
+            "type": "string"
+           },
+           "handle": {
+            "type": "string"
+           },
+           "label": {
+            "type": "string"
+           }
+          },
+          "additionalProperties": false,
+          "required": [
+           "headline"
+          ]
+         },
+         "caption": {
+          "type": "string"
+         }
+        },
+        "additionalProperties": false,
+        "required": [
+         "kit",
+         "style",
+         "text"
+        ]
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/projects": {
+   "get": {
+    "operationId": "get_api_projects",
+    "summary": "Cuts (timeline projects).",
+    "responses": {
+     "200": {
+      "description": "JSON"
+     },
+     "4XX": {
+      "description": "{\"error\": message}"
+     }
+    }
+   },
+   "post": {
+    "operationId": "post_api_projects",
+    "summary": "Make an empty cut.",
+    "responses": {
+     "200": {
+      "description": "JSON"
+     },
+     "4XX": {
+      "description": "{\"error\": message}"
+     }
+    },
+    "parameters": [
+     {
+      "name": "X-Media-Lab",
+      "in": "header",
+      "required": true,
+      "schema": {
+       "const": "1"
+      },
+      "description": "required on every POST except /mcp"
+     }
+    ],
+    "requestBody": {
+     "required": false,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "name": {
+          "type": "string"
+         }
+        },
+        "additionalProperties": false
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/projects/{p1}": {
+   "get": {
+    "operationId": "get_api_projects_p1",
+    "summary": "A cut with its items, music and resolved timing.",
+    "responses": {
+     "200": {
+      "description": "JSON"
+     },
+     "4XX": {
+      "description": "{\"error\": message}"
+     }
+    },
+    "parameters": [
+     {
+      "name": "p1",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ]
+   },
+   "post": {
+    "operationId": "post_api_projects_p1",
+    "summary": "Replace a cut (send the rev you read; a stale rev is refused).",
+    "responses": {
+     "200": {
+      "description": "JSON"
+     },
+     "4XX": {
+      "description": "{\"error\": message}"
+     }
+    },
+    "parameters": [
+     {
+      "name": "p1",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     },
+     {
+      "name": "X-Media-Lab",
+      "in": "header",
+      "required": true,
+      "schema": {
+       "const": "1"
+      },
+      "description": "required on every POST except /mcp"
+     }
+    ],
+    "requestBody": {
+     "required": false,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "id": {
+          "type": "string"
+         },
+         "rev": {
+          "type": "integer"
+         },
+         "project": {
+          "type": "object"
+         }
+        },
+        "additionalProperties": false,
+        "required": [
+         "id",
+         "rev",
+         "project"
+        ]
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/projects/{p1}/delete": {
+   "post": {
+    "operationId": "post_api_projects_p1_delete",
+    "summary": "Delete a cut (owner only).",
+    "responses": {
+     "200": {
+      "description": "JSON"
+     },
+     "4XX": {
+      "description": "{\"error\": message}"
+     }
+    },
+    "parameters": [
+     {
+      "name": "p1",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     },
+     {
+      "name": "X-Media-Lab",
+      "in": "header",
+      "required": true,
+      "schema": {
+       "const": "1"
+      },
+      "description": "required on every POST except /mcp"
+     }
+    ],
+    "requestBody": {
+     "required": false,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object"
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/projects/{p1}/export": {
+   "post": {
+    "operationId": "post_api_projects_p1_export",
+    "summary": "Start the final MP4 export of a cut.",
+    "responses": {
+     "200": {
+      "description": "JSON"
+     },
+     "4XX": {
+      "description": "{\"error\": message}"
+     }
+    },
+    "parameters": [
+     {
+      "name": "p1",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     },
+     {
+      "name": "X-Media-Lab",
+      "in": "header",
+      "required": true,
+      "schema": {
+       "const": "1"
+      },
+      "description": "required on every POST except /mcp"
+     }
+    ],
+    "requestBody": {
+     "required": false,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "id": {
+          "type": "string"
+         },
+         "rev": {
+          "type": "integer"
+         }
+        },
+        "additionalProperties": false,
+        "required": [
+         "id",
+         "rev"
+        ]
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/projects/{p1}/preview": {
+   "post": {
+    "operationId": "post_api_projects_p1_preview",
+    "summary": "Start a low-resolution preview render of a cut (send its rev).",
+    "responses": {
+     "200": {
+      "description": "JSON"
+     },
+     "4XX": {
+      "description": "{\"error\": message}"
+     }
+    },
+    "parameters": [
+     {
+      "name": "p1",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     },
+     {
+      "name": "X-Media-Lab",
+      "in": "header",
+      "required": true,
+      "schema": {
+       "const": "1"
+      },
+      "description": "required on every POST except /mcp"
+     }
+    ],
+    "requestBody": {
+     "required": false,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object"
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/recent": {
+   "get": {
+    "operationId": "get_api_recent",
+    "summary": "Recent pictures, clips, music and exports, newest first, with licence labels.",
+    "responses": {
+     "200": {
+      "description": "JSON"
+     },
+     "4XX": {
+      "description": "{\"error\": message}"
+     }
+    }
+   }
+  },
+  "/api/styles": {
+   "get": {
+    "operationId": "get_api_styles",
+    "summary": "Post styles available for render_post.",
+    "responses": {
+     "200": {
+      "description": "JSON"
+     },
+     "4XX": {
+      "description": "{\"error\": message}"
+     }
+    }
+   }
+  },
+  "/api/tracks": {
+   "get": {
+    "operationId": "get_api_tracks",
+    "summary": "Music tracks usable in a cut.",
+    "responses": {
+     "200": {
+      "description": "JSON"
+     },
+     "4XX": {
+      "description": "{\"error\": message}"
+     }
+    }
+   }
+  },
+  "/api/upload": {
+   "post": {
+    "operationId": "post_api_upload",
+    "summary": "Upload a picture, video or audio file: raw body, Content-Type, X-Filename header.",
+    "responses": {
+     "200": {
+      "description": "JSON"
+     },
+     "4XX": {
+      "description": "{\"error\": message}"
+     }
+    },
+    "parameters": [
+     {
+      "name": "X-Media-Lab",
+      "in": "header",
+      "required": true,
+      "schema": {
+       "const": "1"
+      },
+      "description": "required on every POST except /mcp"
+     }
+    ],
+    "requestBody": {
+     "required": false,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object"
+       }
+      }
+     }
+    }
+   }
+  },
+  "/mcp": {
+   "post": {
+    "operationId": "post_mcp",
+    "summary": "MCP over Streamable HTTP (JSON-RPC in, JSON out).",
+    "responses": {
+     "200": {
+      "description": "JSON"
+     },
+     "4XX": {
+      "description": "{\"error\": message}"
+     }
+    },
+    "parameters": [
+     {
+      "name": "X-Media-Lab",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "const": "1"
+      },
+      "description": "required on every POST except /mcp"
+     }
+    ],
+    "requestBody": {
+     "required": false,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object"
+       }
+      }
+     }
+    }
+   },
+   "get": {
+    "operationId": "get_mcp",
+    "summary": "Not used: 405 (this MCP endpoint has no event stream).",
+    "responses": {
+     "200": {
+      "description": "JSON"
+     },
+     "4XX": {
+      "description": "{\"error\": message}"
+     }
+    }
+   }
+  }
+ }
+}

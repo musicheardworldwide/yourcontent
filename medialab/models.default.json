@@ -1,0 +1,36 @@
+{
+  "_note": "Stock public files (Comfy-Org/Qwen-Image-2.1, checked 2026-10-07). Qwen-Image 2.1: Qwen Research Licence, non-commercial. The int8 Qwen3-VL 8B encoder file is distributed only in that repack, which declares the Qwen research licence, so it is labelled qwen-image-nc (upstream Qwen/Qwen3-VL-8B-Instruct is Apache-2.0, but only a conversion you make yourself carries that).",
+  "image": {
+    "default": "bf16",
+    "variants": {
+      "bf16": {"label": "Qwen-Image 2.1 bf16", "unet": "qwen_image_2.1_bf16.safetensors", "lora": null}
+    },
+    "clip": "qwen3vl_8b_int8_convrot.safetensors",
+    "vae": "qwen_image_2.1_vae_bf16.safetensors",
+    "licence": "qwen-image-nc",
+    "encoder_licence": "qwen-image-nc"
+  },
+  "video": {
+    "unet": "wan2.2_i2v_{}_noise_14B_fp8_scaled.safetensors",
+    "lora": "wan2.2_i2v_lightx2v_4steps_lora_v1_{}_noise.safetensors",
+    "clip": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+    "vae": "wan_2.1_vae.safetensors",
+    "licence": "apache-2.0"
+  },
+  "music": {
+    "unet": "acestep_v1.5_turbo.safetensors",
+    "clip1": "qwen_0.6b_ace15.safetensors",
+    "clip2": "qwen_1.7b_ace15.safetensors",
+    "vae": "ace_1.5_vae.safetensors",
+    "licence": "ace-step"
+  },
+  "files": {},
+  "file_patterns": [
+    ["(?i)qwen[-_ ]?image", "qwen-image-nc"],
+    ["(?i)^wan2\\.[12]_", "apache-2.0"],
+    ["(?i)lightx2v", "apache-2.0"],
+    ["(?i)^umt5", "apache-2.0"],
+    ["(?i)^(acestep|ace_)|_ace15\\.", "ace-step"]
+  ],
+  "aliases": {}
+}

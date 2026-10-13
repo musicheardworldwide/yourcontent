@@ -1,0 +1,110 @@
+# YourContent: generate, edit and export, on top of a ComfyUI you already run.
+# Defaults are generic and local-only. Put machine-specific values (bind address, ComfyUI URL, folder paths,
+# allowed host names) in a compose.override.yaml next to this file; it is gitignored.
+# Before the first start: mkdir -p data/lab   (so the data folder belongs to you, not to root)
+name: media-lab
+services:
+  app:
+    build: .
+    image: media-lab:latest
+    container_name: media-lab
+    # To reach it from other machines set MEDIA_LAB_PUBLISH (e.g. in .env) AND MEDIA_LAB_TOKEN: the app refuses
+    # to start on a non-loopback publish address without a token. If you replace `ports` in an override
+    # instead, set MEDIA_LAB_PUBLISHED_HOST there to the same address, or the app cannot tell.
+    ports:
+      - "${MEDIA_LAB_PUBLISH:-127.0.0.1}:8190:8190"
+    environment:
+      MEDIA_LAB_COMFY_URL: ${MEDIA_LAB_COMFY_URL:-http://host.docker.internal:8188}
+      MEDIA_LAB_HOST: 0.0.0.0
+      MEDIA_LAB_PORT: "8190"
+      MEDIA_LAB_DATA: /data
+      MEDIA_LAB_COMFY_OUTPUT: /output
+      MEDIA_LAB_UPLOADS: /uploads
+      MEDIA_LAB_INPUT_SUBDIR: ${MEDIA_LAB_INPUT_SUBDIR:-media_lab}
+      # The container listens on 0.0.0.0; whether a token is required is decided from the publish address.
+      MEDIA_LAB_PUBLISHED_HOST: ${MEDIA_LAB_PUBLISHED_HOST:-${MEDIA_LAB_PUBLISH:-127.0.0.1}}
+      MEDIA_LAB_REQUIRE_TOKEN: ${MEDIA_LAB_REQUIRE_TOKEN:-auto}
+      MEDIA_LAB_TOKEN: ${MEDIA_LAB_TOKEN:-}
+      MEDIA_LAB_ALLOWED_HOSTS: ${MEDIA_LAB_ALLOWED_HOSTS:-}
+      MEDIA_LAB_ADOPT_LEGACY: ${MEDIA_LAB_ADOPT_LEGACY:-0}
+      MEDIA_LAB_RENDER_URL: ${MEDIA_LAB_RENDER_URL:-http://render:8191}
+      PYTHONUNBUFFERED: "1"
+    networks: [default, render]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    user: "1000:1000"
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    # Read-write. /data holds YourContent's own records (sidecars, projects, exports). /output is ComfyUI's
+    # output/ folder (new files go to output/media_lab/); /uploads is a subfolder of ComfyUI's input/ named
+    # like MEDIA_LAB_INPUT_SUBDIR. Delete removes only files YourContent made or adopted, for good.
+    volumes:
+      - ${MEDIA_LAB_DATA_DIR:-./data/lab}:/data
+      - ${COMFY_OUTPUT_DIR:-./data/output}:/output
+      - ${COMFY_UPLOADS_DIR:-./data/uploads}:/uploads
+    restart: "no"
+  # Draws branded posts with a headless Chromium (render/). Reached only by the app over the internal network:
+  # no published port, no internet, no volumes; Chromium's own requests are answered from the image.
+  render:
+    build: ./render
+    image: media-lab-render:latest
+    container_name: media-lab-render
+    networks: [render]
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 2g
+    restart: "no"
+
+  # Optional photo/video recipes (craft/README.md). Start with: docker compose --profile craft up -d
+  # It shares only the data folders with the app (a queue in, finished files out): no port, and its network is
+  # internal (no way out). Each app runs inside bubblewrap; that needs user namespaces, which Docker's default
+  # seccomp/AppArmor profiles and masked /proc paths block, hence the three relaxations below for this service only.
+  craft:
+    profiles: ["craft"]
+    build:
+      context: .
+      dockerfile: craft/Dockerfile
+    image: media-lab-craft:latest
+    container_name: media-lab-craft
+    environment:
+      MEDIA_LAB_DATA: /data
+      MEDIA_LAB_COMFY_OUTPUT: /output
+      MEDIA_LAB_UPLOADS: /uploads
+      MEDIA_LAB_INPUT_SUBDIR: ${MEDIA_LAB_INPUT_SUBDIR:-media_lab}
+      # AI masks (SAM 3, Meta's SAM License, not open source) stay off unless you set this and mount the model.
+      MEDIA_LAB_CRAFT_AI_MASKS: ${MEDIA_LAB_CRAFT_AI_MASKS:-0}
+      PYTHONUNBUFFERED: "1"
+    user: "1000:1000"
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+      - seccomp=unconfined
+      - apparmor=unconfined
+      - systempaths=unconfined
+    volumes:
+      - ${MEDIA_LAB_DATA_DIR:-./data/lab}:/data
+      - ${COMFY_OUTPUT_DIR:-./data/output}:/output:ro
+      - ${COMFY_UPLOADS_DIR:-./data/uploads}:/uploads:ro
+    networks:
+      - craft-internal
+    restart: "no"
+
+networks:
+  render:
+    internal: true
+  craft-internal:
+    internal: true

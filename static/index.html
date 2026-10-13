@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>YourContent</title>
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+<script src="/static/theme.js"></script><link rel="stylesheet" href="/static/tokens.css"><link rel="stylesheet" href="/static/style.css"><!--ext-css--></head>
+<body class="tab-picture card-clip">
+<header class="top">
+  <h1><svg class="brandmark" viewBox="0 0 64 64" aria-hidden="true"><path class="bm-page" d="M12 8h27l13 13v31a4 4 0 0 1-4 4H16a4 4 0 0 1-4-4z"/><path class="bm-fold" d="M39 8v13h13z"/><path class="bm-play" d="M27 29l14 9-14 9z"/></svg>YourContent</h1>
+  <nav class="viewnav" id="viewnav" aria-label="Views" hidden></nav>
+  <span class="sp"></span>
+  <button class="dot" id="dot" type="button" title="Checking ComfyUI…" aria-label="Checking ComfyUI…"></button>
+  <button class="ghost hdr-wide" id="themebtn" data-theme-switch type="button" aria-label="Change theme"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#system"/></svg><span class="lbltext">System</span></button>
+  <button class="ghost hdr-wide" id="tourbtn" type="button"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#help"/></svg>Tour</button>
+  <button class="ghost" id="aboutbtn" type="button">About</button>
+</header>
+
+<dialog class="welcome" id="notice" aria-labelledby="welcometitle">
+  <h2 id="welcometitle">Welcome to YourContent</h2>
+  <p class="welcomelead">Turn your pictures and words into posts in your brand, plan them on a calendar, and make
+    pictures, clips and music on your own GPU.</p>
+  <p class="welcomenote">YourContent doesn't filter prompts. You're responsible for what you make: don't depict real people without their
+    consent, never sexualise minors, and follow the law where you live. Some models are non-commercial; every file is
+    labelled.</p>
+  <div class="welcomebtns">
+    <button id="noticeok" type="button"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#layers"/></svg><span id="noticeoktext">Make a post</span></button>
+    <button class="ghost" id="noticemake" type="button"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#image"/></svg>Make a picture</button>
+    <button class="ghost" id="noticetour" type="button"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#help"/></svg>Take the tour</button>
+  </div>
+  <p class="hint">This shows once on this device; About opens it again.</p>
+</dialog>
+
+<form class="bar login" id="login" hidden>
+  <label for="token">This YourContent needs its access token.</label>
+  <input id="token" type="password" autocomplete="current-password">
+  <button type="submit">Sign in</button>
+  <span class="status" id="loginstatus" role="status"></span>
+</form>
+
+<main id="main">
+<div class="col colL">
+  <section class="side" id="pane-picture" aria-label="Picture">
+    <h2 class="sidehead">Make a picture</h2>
+    <div><label for="prompt">Prompt</label><textarea id="prompt" placeholder="Describe the picture… With references, say e.g. “the woman from image 1 in the room from image 2”."></textarea></div>
+    <div><span class="label">References (optional): upload, drop, paste, or “+ ref” on any picture</span>
+      <div class="refs" id="refs"></div><input type="file" id="file" accept="image/png,image/jpeg,image/webp" multiple hidden></div>
+    <div><label for="negative">Avoid (optional)</label><textarea id="negative" placeholder="blurry, extra fingers…"></textarea></div>
+    <div><span class="lbl" id="sizelbl">Shape</span><div class="chips" id="sizechips" role="group" aria-labelledby="sizelbl"></div>
+      <select id="size" hidden>
+      <option value="square">Square</option><option value="portrait">Portrait</option><option value="landscape">Landscape</option>
+      <option value="wide">Wide</option><option value="tall">Tall</option><option value="match">Match ref 1</option></select></div>
+    <details class="adv"><summary>Advanced: model, steps, seed</summary>
+      <div class="advbody">
+        <div><span class="lbl" id="modellbl">Model</span><div class="chips" id="modelchips" role="group" aria-labelledby="modellbl"></div>
+          <select id="model" hidden></select></div>
+        <div><span class="lbl" id="seedlbl">Seed</span><div class="chips" id="seedchips" role="group" aria-labelledby="seedlbl"></div>
+          <input id="seed" placeholder="a whole number" inputmode="numeric" aria-labelledby="seedlbl" hidden></div>
+        <div><label for="steps">Steps</label><input id="steps" type="number" min="4" max="60" value="30" inputmode="numeric"></div>
+      </div>
+    </details>
+    <button id="go" type="button">Generate</button>
+    <div id="status" class="status" role="status">Ctrl+Enter to generate. The first one after a restart takes about 30 s to load the model.</div>
+  </section>
+</div>
+
+<div class="col colR">
+  <div class="stage" id="stage"><div class="empty">Your picture shows up here.</div></div>
+  <div class="tools" id="tools" hidden>
+    <a class="btn ghost" id="dl" href="#"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#download"/></svg>Download</a>
+    <button class="ghost sec" id="useref" type="button"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#plus"/></svg>Use as reference</button>
+    <button class="ghost" id="tovideo" type="button"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#film"/></svg>Animate this</button>
+    <button class="ghost" id="extend" type="button"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#forward"/></svg>Extend</button>
+    <button class="ghost" id="tocut" type="button"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#cut"/></svg>Add to cut</button>
+    <button class="ghost sec" id="info" type="button" title="Details and licence" aria-label="Details and licence">ⓘ</button>
+    <span class="sp"></span>
+    <button class="ghost danger sec" id="del" type="button"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#trash"/></svg>Delete forever</button>
+    <button class="ghost more" id="toolsmore" type="button" aria-label="More actions" aria-expanded="false">⋯</button>
+  </div>
+  <div class="status tstatus" id="tstatus" role="status"></div>
+
+  <nav class="ptabs" id="ptabs" aria-label="Sections">
+    <button type="button" data-tab="picture">Picture</button>
+    <button type="button" data-tab="clip">Clip</button>
+    <button type="button" data-tab="cut" id="ptabcut">Cut</button>
+  </nav>
+
+  <div class="panel card" id="card">
+    <div class="ctabs" role="tablist">
+      <button type="button" role="tab" data-tab="clip">Make clip</button>
+      <button type="button" role="tab" data-tab="cut" id="ctabcut">Cut</button>
+    </div>
+
+    <section class="pane" id="pane-clip" aria-label="Make clip">
+      <h2>Image → video <span class="hint">Wan 2.2 14B · 16 fps</span></h2>
+      <div class="vstart"><div id="vthumb"><div class="none">no start<br>image</div></div>
+        <div class="hint" id="vhint">Start image: press <b>Animate this</b> on any picture (or <b>Extend</b> on a clip), or
+          <a href="#" id="vupload" class="accent">upload one</a>.<input type="file" id="vfile" accept="image/png,image/jpeg,image/webp" hidden></div></div>
+      <div><label for="vprompt">Motion (what should happen)</label><textarea id="vprompt" placeholder="slow camera push in, she turns and smiles, hair moves in the wind…"></textarea></div>
+      <div class="vgrid">
+        <div><label for="vsecs">Length</label><select id="vsecs"><option value="3">3 s</option><option value="5">5 s</option></select></div>
+        <div><label for="vq">Quality</label><select id="vq"><option value="480p">480p (~1 min)</option><option value="720p">720p (slower)</option></select></div>
+        <button id="vgo" type="button">Make video</button>
+      </div>
+      <div id="vstatus" class="status" role="status"></div>
+    </section>
+
+    <section class="pane" id="pane-cut" aria-label="Cut">
+      <div class="prow">
+        <input id="pname" maxlength="80" aria-label="Cut name" placeholder="Untitled cut">
+        <button class="ghost tiny" id="pmenubtn" type="button" aria-label="Cuts menu" aria-expanded="false">▾</button>
+        <span class="hint" id="psave"></span>
+        <button class="link" id="preload" type="button" hidden>Reload newer</button>
+        <button class="link" id="pretry" type="button" hidden>Retry</button>
+        <span class="sp"></span>
+        <b id="ptotal"></b>
+      </div>
+      <div class="menu" id="pmenu" hidden>
+        <div id="plist"></div>
+        <button class="ghost" id="pnew" type="button">New cut</button>
+        <button class="ghost danger" id="pdel" type="button">Delete cut</button>
+      </div>
+
+      <div class="cutstrip" id="cutstrip" aria-label="Cut items"></div>
+      <div class="hint" id="cutempty">Pick something in Recent and press <b>Add to cut</b>, or drag it here.</div>
+
+      <div class="editor" id="editor" hidden>
+        <div id="eclip">
+          <div class="erow"><label for="ein">In</label><input id="ein" type="range" min="0" max="1" step="1" value="0"></div>
+          <div class="erow"><label for="eout">Out</label><input id="eout" type="range" min="1" max="2" step="1" value="2"></div>
+          <div class="readout" id="ereadout"></div>
+          <div class="hint" id="esound" hidden>Clip sound is not used.</div>
+        </div>
+        <div id="estill" class="erow"><label for="edur">Show for</label><input id="edur" type="number" min="0.5" max="30" step="0.5" value="2.5" inputmode="decimal"><span>s</span></div>
+        <div class="hint" id="emissing" hidden>This file is gone. The cut shows black for the same length.</div>
+        <div class="ebtns">
+          <button class="ghost" id="eleft" type="button" aria-label="Move earlier">◀</button>
+          <button class="ghost" id="eright" type="button" aria-label="Move later">▶</button>
+          <span class="sp"></span>
+          <button class="ghost danger" id="eremove" type="button">Remove</button>
+        </div>
+      </div>
+
+      <div class="music">
+        <div class="mrow"><label for="msel">Music</label><select id="msel"></select>
+          <input type="file" id="mfile" accept="audio/mpeg,audio/wav,audio/x-wav,audio/mp4,audio/x-m4a,.mp3,.wav,.m4a" hidden></div>
+        <details id="madjust" hidden><summary>Adjust</summary>
+          <div class="grid2">
+            <div><label for="mvol">Volume <output id="mvolout">100%</output></label><input id="mvol" type="range" min="5" max="100" step="5" value="100">
+              <span class="hint">100% = standard loudness</span></div>
+            <div><label for="moff">Start (s)</label><input id="moff" type="number" min="-600" max="600" step="0.5" value="0" inputmode="decimal">
+              <span class="hint">+5 skips the intro, −2 starts the song 2 s in</span></div>
+            <div><label for="mfin">Fade in (s)</label><input id="mfin" type="number" min="0" max="10" step="0.5" value="0.5" inputmode="decimal"></div>
+            <div><label for="mfout">Fade out (s)</label><input id="mfout" type="number" min="0" max="10" step="0.5" value="1.5" inputmode="decimal"></div>
+          </div>
+        </details>
+        <div class="mmake" id="mmake" hidden>
+          <div><label for="mtags">Style</label><input id="mtags" maxlength="1000" placeholder="warm lo-fi hip hop, mellow piano"></div>
+          <details><summary>Lyrics (optional)</summary>
+            <textarea id="mlyrics" maxlength="4000" placeholder="Leave empty for an instrumental."></textarea></details>
+          <div class="grid2">
+            <div><label for="mbpm">BPM</label><input id="mbpm" type="number" min="10" max="300" value="120" inputmode="numeric"></div>
+            <div><label for="msecs">Length (s)</label><input id="msecs" type="number" min="5" max="240" step="1" inputmode="decimal"></div>
+          </div>
+          <div class="ebtns"><button id="mgo" type="button">Make music</button><button class="ghost" id="mclose" type="button">Close</button></div>
+          <div class="hint" id="mreason"></div>
+        </div>
+        <div class="hint" id="mlonger" hidden><span id="mlongertext"></span> · <button class="link" id="mlongerbtn" type="button">Make a longer one</button></div>
+        <div id="mstatus" class="status" role="status"></div>
+      </div>
+
+      <div class="xrow">
+        <select id="xshape" aria-label="Shape"></select>
+        <button class="ghost" id="xpreview" type="button"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#play"/></svg>Preview</button>
+        <button id="xexport" type="button">Export</button>
+      </div>
+      <details id="xmore"><summary>More</summary>
+        <div class="grid3">
+          <div><label for="xfit">Fit</label><select id="xfit"><option value="auto">Auto</option><option value="fill">Fill &amp; crop</option><option value="blur">Blurred background</option></select></div>
+          <div><label for="xfps">FPS</label><select id="xfps"><option value="24">24</option><option value="30">30</option></select>
+            <span class="hint">24 is smoother for Wan clips</span></div>
+          <div><label for="xfade">Crossfade length</label><select id="xfade"><option value="0.25">0.25 s</option><option value="0.5">0.5 s</option><option value="1">1 s</option></select></div>
+        </div>
+      </details>
+      <div class="lic" id="xlic" hidden><span id="xlictext"></span> <button class="ghost tiny" id="xlici" type="button" aria-label="Why">ⓘ</button></div>
+      <div class="warn" id="xwarn" hidden></div>
+      <div id="xstatus" class="status" role="status"></div>
+    </section>
+  </div>
+  <section class="recentbox" id="recentbox" aria-label="Recent">
+    <span class="lbl">Recent</span><div class="strip" id="strip"></div>
+  </section>
+</div>
+</main>
+
+<section class="view vfull" id="view-posts" aria-label="Posts" hidden><h2 class="sr">Posts</h2><div data-mod="MediaLabPosts"></div>
+  <div class="vpanel vcraft" data-mlp-canvas><h3>Photo and video recipes</h3><div data-mod="MediaLabCraft"></div></div>
+</section>
+<section class="view" id="view-calendar" aria-label="Calendar" hidden><h2>Calendar</h2><div class="viewbody"></div></section>
+<section class="view" id="view-connect" aria-label="Connect" hidden><h2>Connect</h2>
+  <div class="vpanels">
+    <div class="vpanel"><div data-mod="MediaLabGoogle"></div></div>
+    <div class="vpanel"><h3>Your AI agent</h3><div data-mod="MediaLabAgents"></div></div>
+  </div>
+</section>
+
+<footer class="foot">Only use a real person's likeness with their consent. You're responsible for what you make and share.</footer>
+
+<dialog id="about">
+  <h2>About YourContent</h2>
+  <p>YourContent doesn't filter prompts. You're responsible for what you make: don't depict real people without their
+    consent, never sexualise minors, and follow the law where you live. Some models are non-commercial; every file is
+    labelled.</p>
+  <table class="lictable">
+    <thead><tr><th>Part</th><th>Licence</th></tr></thead>
+    <tbody>
+      <tr><td>YourContent</td><td>PolyForm Small Business 1.0.0: free for people and companies under 100 staff and $1M revenue</td></tr>
+      <tr><td>Qwen-Image 2.1 (pictures)</td><td>Non-commercial research</td></tr>
+      <tr><td>Wan 2.2, lightx2v, umt5 (clips)</td><td>Apache-2.0</td></tr>
+      <tr><td>ACE-Step 1.5 (music)</td><td>Apache-2.0 / MIT, outputs commercial OK</td></tr>
+    </tbody>
+  </table>
+  <h3>Status</h3>
+  <ul class="feat" id="feat"></ul>
+  <p class="hint" id="version"></p>
+  <div class="ebtns"><button class="ghost" id="recheck" type="button">Check again</button>
+    <button class="ghost" id="welcomeagain" type="button">Welcome screen</button>
+    <button class="ghost" id="abouttour" type="button"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#help"/></svg>Tour</button>
+    <button class="ghost" data-theme-switch type="button" aria-label="Change theme"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#system"/></svg><span class="lbltext">System</span></button>
+    <span class="sp"></span>
+    <button id="aboutclose" type="button">Close</button></div>
+</dialog>
+
+<dialog id="infodlg">
+  <h2 id="infotitle">Details</h2>
+  <div id="infobody"></div>
+  <div class="ebtns"><span class="sp"></span><button id="infoclose" type="button">Close</button></div>
+</dialog>
+
+<dialog id="picker">
+  <h2>Add to the cut</h2>
+  <div class="strip pick" id="pickstrip"></div>
+  <div class="ebtns">
+    <button class="ghost" id="pickup" type="button">Upload…</button>
+    <input type="file" id="pickfile" accept="image/png,image/jpeg,image/webp,video/mp4,video/quicktime,video/webm" hidden>
+    <span class="sp"></span><button id="pickclose" type="button">Close</button></div>
+  <div class="status" id="pickstatus" role="status"></div>
+</dialog>
+
+<script src="/static/app.js"></script><!--ext-js--></body></html>

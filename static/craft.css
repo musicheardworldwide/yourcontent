@@ -1,0 +1,18 @@
+/* Photo and video recipes (craft.js), under the Posts gallery. Colours from tokens.css. */
+.cr-tabs{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
+.cr-body{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:10px;align-items:end}
+.cr-field{min-width:0}
+.cr-check{display:flex;gap:8px;align-items:center;color:var(--text);font-size:13px;min-height:var(--tap)}
+.cr-check input{width:auto}
+.cr-row{display:flex;gap:8px;align-items:center;grid-column:1/-1}
+.cr-items{grid-column:1/-1;margin:0 0 8px;padding-left:20px;display:flex;flex-direction:column;gap:6px}
+.cr-items li{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.cr-items input[type=number]{width:80px}
+.cr-items input:not([type]){flex:1;min-width:140px}
+.cr-name{font-size:13px;min-width:120px;overflow-wrap:anywhere}
+.cr-body .cr-field:has(.cr-items){grid-column:1/-1}
+.cr-out{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px}
+.cr-out figure{margin:0;max-width:min(100%,320px)}
+.cr-out img,.cr-out video{max-width:100%;border-radius:var(--r-card);border:1px solid var(--line);box-shadow:var(--shadow)}
+.cr-out figcaption{font-size:12px;color:var(--dim);overflow-wrap:anywhere}
+.cr-out .warn{color:var(--warn)}

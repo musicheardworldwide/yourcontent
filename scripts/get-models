@@ -1,0 +1,4 @@
+#!/bin/sh
+# Download the stock model files YourContent needs into ComfyUI's models/ folder (python3 only, no Docker needed).
+# Usage: scripts/get-models [pictures|clips|music|all] --models-dir /path/to/ComfyUI/models [--check|--dry-run]
+PYTHONPATH="$(cd "$(dirname "$0")/.." && pwd)${PYTHONPATH:+:$PYTHONPATH}" exec python3 -m medialab get-models "$@"

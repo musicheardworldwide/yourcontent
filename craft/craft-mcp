@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+# craft-mcp <app> [cli args...]: run one craft app CLI (default subcommand: `mcp`, MCP over stdio) in bubblewrap.
+#
+# The sandbox: no network and own PID/IPC namespaces (--unshare-all), read-only /usr, an empty read-only home,
+# a private /tmp, a cleared environment, and exactly one writable folder: $CRAFT_WORK (the job's folder).
+# Three of the four apps' MCP servers can read, write and delete any path they can reach, so this is the boundary:
+# never add another writable bind, and copy inputs into $CRAFT_WORK instead of binding where they live.
+#
+# Environment:
+#   CRAFT_WORK       required: the job folder, the only writable path
+#   CRAFT_BIN_DIR    folder holding <app>-cli (the craft image: /opt/craft/bin, the default)
+#   CRAFT_SRC        alternatively, a folder of source checkouts: $CRAFT_SRC/<app>/target/release/<app>-cli
+#   CRAFT_FONTS      optional folder of .ttf/.otf, mounted read-only as the sandbox user's fonts
+#   CRAFT_GPU=1      optional: pass /dev/dri through (off by default)
+#   CRAFT_AI_MASKS=1 and CRAFT_SAM3_DIR: LightCraft only, mount the SAM 3 model folder read-only. Off by default;
+#                    the weights are under Meta's SAM License, not the apps' licence (THIRD-PARTY-NOTICES.md).
+set -euo pipefail
+app="${1:?usage: craft-mcp photocraft|lightcraft|filmcraft|effectcraft [args...]}"; shift
+case "$app" in photocraft|lightcraft|filmcraft|effectcraft) ;; *) echo "unknown app: $app" >&2; exit 2;; esac
+if [ -n "${CRAFT_BIN_DIR:-}" ]; then bin="$CRAFT_BIN_DIR/$app-cli"
+elif [ -n "${CRAFT_SRC:-}" ]; then bin="$CRAFT_SRC/$app/target/release/$app-cli"
+else bin="/opt/craft/bin/$app-cli"; fi
+work="${CRAFT_WORK:?CRAFT_WORK must name the job folder}"
+# Bridge/connect would drive an unsandboxed GUI over TCP (and there is no network here anyway): refuse.
+for a in "$@"; do case "$a" in --bridge*|--connect*|serve|--port*) echo "refused: $a (sandboxed headless only)" >&2; exit 2;; esac; done
+[ -x "$bin" ] || { echo "not built: $app-cli" >&2; exit 1; }
+mkdir -p "$work"
+work="$(cd "$work" && pwd -P)"
+if [ $# -eq 0 ]; then
+  case "$app" in
+    photocraft) set -- mcp --automation-read-root "$work" --automation-write-root "$work" ;;
+    *) set -- mcp ;;
+  esac
+fi
+home=/craft-home
+# Per-app state goes inside the job folder, never a real config or data folder.
+appenv=(--setenv TMPDIR /tmp --setenv XDG_CONFIG_HOME "$work/.craft/config" --setenv XDG_DATA_HOME "$work/.craft/data"
+        --setenv LIGHTCRAFT_GPU 0 --setenv FILMCRAFT_DATA_DIR "$work/.craft/filmcraft"
+        --setenv EFFECTCRAFT_CONFIG_DIR "$work/.craft/effectcraft" --setenv LIGHTCRAFT_SAM3_MIRRORS "")
+fonts=(); [ -n "${CRAFT_FONTS:-}" ] && [ -d "$CRAFT_FONTS" ] && fonts=(--ro-bind "$CRAFT_FONTS" "$home/.local/share/fonts")
+gpu=(); [ "${CRAFT_GPU:-0}" = 1 ] && [ -d /dev/dri ] && gpu=(--dev-bind /dev/dri /dev/dri --ro-bind-try /sys /sys)
+masks=(); maskenv=(--setenv LIGHTCRAFT_SAM3_DIR /nonexistent)
+if [ "$app" = lightcraft ] && [ "${CRAFT_AI_MASKS:-0}" = 1 ] && [ -d "${CRAFT_SAM3_DIR:-}" ]; then
+  masks=(--ro-bind "$CRAFT_SAM3_DIR" /opt/sam3); maskenv=(--setenv LIGHTCRAFT_SAM3_DIR /opt/sam3)
+fi
+exec bwrap \
+  --unshare-all --die-with-parent --new-session \
+  --ro-bind /usr /usr --symlink usr/lib /lib --symlink usr/lib64 /lib64 --symlink usr/bin /bin \
+  --ro-bind-try /etc/fonts /etc/fonts --ro-bind-try /etc/ld.so.cache /etc/ld.so.cache \
+  --ro-bind-try /etc/localtime /etc/localtime --ro-bind-try /usr/share/vulkan /usr/share/vulkan \
+  --proc /proc --dev /dev --tmpfs /tmp --tmpfs /run \
+  --tmpfs "$home" "${fonts[@]}" --remount-ro "$home" \
+  --bind "$work" "$work" \
+  --ro-bind "$bin" "/opt/craft/$app-cli" \
+  "${masks[@]}" "${gpu[@]}" \
+  --chdir "$work" \
+  --clearenv --setenv HOME "$home" --setenv PATH /usr/bin --setenv LANG C.UTF-8 \
+  --setenv XDG_RUNTIME_DIR /tmp --setenv RUST_BACKTRACE 1 "${appenv[@]}" "${maskenv[@]}" \
+  "/opt/craft/$app-cli" "$@"

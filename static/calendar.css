@@ -1,0 +1,101 @@
+/* Content calendar (studio merge). Colours from tokens.css; each status has its own colour (--st-*), shown as the
+   entry's edge and dot, with the word itself in the week view and a legend under the grid. */
+html.cal-open main{display:none}
+.cal-host{padding:20px;min-width:0}
+.cal{display:flex;flex-direction:column;gap:12px;min-width:0;color:var(--text)}
+.cal-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.cal-title{font:600 18px/1.2 var(--font-head);margin:0 6px;font-variant-numeric:tabular-nums}
+.cal-nav{min-width:var(--tap);font-size:18px;line-height:1}
+.cal-views{display:inline-flex;gap:6px}
+button.on[data-calendar-toggle]{background:var(--text);color:var(--bg);border-color:var(--text)}
+.cal-grid{border:1px solid var(--line);border-radius:var(--r-panel);overflow:hidden;background:var(--panel);box-shadow:var(--shadow)}
+.cal-heads,.cal-days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}
+.cal-heads span{font:600 11px/1.3 var(--font-ui);letter-spacing:.08em;text-transform:uppercase;color:var(--dim);padding:8px;border-bottom:1px solid var(--line)}
+.cal-days{list-style:none;margin:0;padding:0}
+.cal-day{min-width:0;min-height:108px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:4px;display:flex;flex-direction:column;gap:3px;cursor:pointer}
+.cal-day:nth-child(7n){border-right:0}
+.cal-week .cal-day{min-height:260px}
+.cal-out{background:var(--bg)}
+.cal-out .cal-daybtn{color:var(--dim)}
+.cal-day.over{outline:2px dashed var(--accent);outline-offset:-3px}
+.cal-daybtn{align-self:flex-start;background:transparent;color:var(--text);border:1px solid transparent;border-radius:var(--r-chip);padding:2px 8px;min-height:28px;font-size:13px;font-weight:600;min-width:30px;font-variant-numeric:tabular-nums}
+.cal-daybtn:hover,.cal-daybtn:focus-visible{border-color:var(--edge);background:var(--chip)}
+.cal-wd{display:none;font-weight:500;color:var(--dim)}
+.cal-week .cal-wd{display:inline}
+.cal-today .cal-daybtn{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.cal-today .cal-daybtn .cal-wd{color:var(--on-accent)}
+.cal-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:3px;min-width:0}
+.cal-item{min-width:0}
+.cal-entry{display:flex;gap:5px;align-items:center;justify-content:flex-start;width:100%;min-width:0;min-height:0;text-align:left;background:var(--chip);color:var(--text);
+  border:0;border-left:3px solid var(--st,var(--dim));border-radius:var(--r-card);padding:4px 6px;font:500 12px/1.3 var(--font-ui);cursor:grab;overflow:hidden}
+.cal-entry:hover,.cal-entry:focus-visible{background:var(--hover);outline:1px solid var(--edge)}
+.cal-entry.dragging{opacity:.4}
+.cal-dot{width:8px;height:8px;border-radius:50%;background:var(--st,var(--dim));flex:none;display:inline-block}
+.cal-entry .cal-dot{display:none}
+.cal-pic{display:none;width:36px;height:36px;object-fit:cover;border-radius:var(--r-card);flex:none;pointer-events:none}
+.cal-time{font-variant-numeric:tabular-nums;color:var(--dim);flex:0 0 auto}
+.cal-month .cal-chan,.cal-month .cal-stw{display:none}
+.cal-chan{flex:0 1 auto;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:45%}
+.cal-ttl{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cal-stw{font:600 10px/1.2 var(--font-ui);letter-spacing:.06em;text-transform:uppercase;color:var(--st,var(--dim));flex:none}
+.cal-week .cal-entry{flex-wrap:wrap;padding:6px 7px;align-items:center}
+.cal-week .cal-pic{display:block}
+.cal-week .cal-ttl{white-space:normal;flex-basis:100%;order:5}
+.st-idea{--st:var(--st-idea)}
+.st-draft{--st:var(--st-draft)}
+.st-ready{--st:var(--st-ready)}
+.st-posted{--st:var(--st-posted)}
+.st-skipped{--st:var(--st-skipped)}
+.cal-entry.st-skipped{opacity:.7}
+.st-skipped .cal-ttl{text-decoration:line-through}
+.cal-foot{display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center}
+.cal-legend{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--dim)}
+.cal-legend li{display:inline-flex;align-items:center;gap:6px}
+.cal-hint{margin:0}
+
+/* editor */
+.cal-dlg{width:min(620px,calc(100vw - 32px))}
+.cal-form{display:flex;flex-direction:column;gap:10px}
+.cal-form h2{margin:0}
+.cal-row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.cal-row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.cal-form textarea{min-height:110px}
+.cal-assetrow{display:flex;align-items:center;gap:8px;margin-bottom:6px;min-width:0}
+.cal-assetnow{flex:1;min-width:0;overflow-wrap:anywhere}
+.cal-pick{display:grid;grid-template-columns:repeat(auto-fill,minmax(56px,1fr));gap:6px;max-height:180px;overflow-y:auto;padding:2px}
+.cal-thumb{padding:0;aspect-ratio:1;background:var(--sunk);border:2px solid transparent;border-radius:var(--r-input);overflow:hidden;display:flex;align-items:center;justify-content:center;color:var(--dim);min-height:0}
+.cal-thumb img{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
+.cal-thumb[aria-pressed=true]{border-color:var(--text);box-shadow:0 0 0 1px var(--text)}
+.cal-thumb:focus-visible{outline:2px solid var(--accent)}
+
+/* touch: the whole day button is the target */
+@media (pointer:coarse){
+  .cal-daybtn{min-height:44px;min-width:44px}
+  .cal-entry{min-height:44px}
+}
+
+/* phone */
+@media(max-width:799px){
+  .cal-host{padding:12px 16px}
+  .cal-bar{gap:6px}
+  .cal-title{flex-basis:100%;order:-1;margin:0}
+  .cal-bar .sp{display:none}
+  .cal-bar button,.cal-bar .btn{min-height:44px}
+  .cal-day{min-height:76px;padding:2px}
+  .cal-heads span{padding:6px 2px;text-align:center;letter-spacing:.02em}
+  .cal-daybtn{min-height:44px;min-width:0;width:100%;padding:2px}
+  /* the month on a phone: one dot per post (Week lists them in full) */
+  .cal-month .cal-list{flex-direction:row;flex-wrap:wrap;justify-content:center;gap:4px;pointer-events:none}
+  .cal-month .cal-entry{width:10px;height:10px;min-height:0;padding:0;border:0;border-radius:50%;background:var(--st,var(--dim))}
+  .cal-month .cal-entry>*{display:none}
+  /* the week stacks: one row per day, entries beside the date */
+  .cal-week .cal-heads{display:none}
+  .cal-week .cal-days{grid-template-columns:1fr}
+  .cal-week .cal-day{min-height:56px;border-right:0;flex-direction:row;align-items:flex-start;gap:8px;padding:6px}
+  .cal-week .cal-daybtn{width:auto;min-width:76px;min-height:44px;text-align:left;justify-content:flex-start}
+  .cal-week .cal-list{flex:1}
+  .cal-week .cal-entry{min-height:44px;font-size:13px}
+  .cal-row3{grid-template-columns:1fr 1fr}
+  .cal-row3>div:last-child{grid-column:1/-1}
+  .cal-row2{grid-template-columns:1fr}
+}

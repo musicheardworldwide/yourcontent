@@ -1,0 +1,22 @@
+/* Connect Google panel (static/google.js). Colours from tokens.css. */
+.gg{border:1px solid var(--line);border-radius:var(--r-panel);background:var(--bg);padding:12px 14px;min-width:0;max-width:100%}
+.gg-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+.gg-scope,.gg-dim{color:var(--dim);font-size:12px}
+.gg-body p{margin:0 0 8px}
+.gg-more{margin-top:4px}
+.gg-more p{margin:0 0 6px;overflow-wrap:anywhere}
+.gg-who{display:flex;align-items:center;gap:8px;font-size:13px;overflow-wrap:anywhere}
+.gg-dot{width:10px;height:10px;border-radius:50%;background:var(--ok);flex:none}
+.gg-links{list-style:none;margin:0 0 10px;padding:0;display:flex;flex-wrap:wrap;gap:6px 14px}
+.gg-link{color:var(--text);text-decoration-color:var(--accent);font-size:13px;overflow-wrap:anywhere}
+.gg-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.gg-row input{flex:1 1 160px;width:auto;min-width:0}
+.gg-row button{flex:0 0 auto}
+.gg-msg{margin:8px 0 0;min-height:1.2em;font-size:13px;color:var(--dim);overflow-wrap:anywhere}
+.gg-msg.err{color:var(--danger)}.gg-msg.ok{color:var(--ok)}
+.gg-files{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
+.gg-files li{display:flex;align-items:center;gap:8px;min-width:0}
+.gg-fname{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}
+.gg code{font-size:12px}
+@media (max-width:420px){.gg{padding:10px}.gg-row button{flex:1 1 auto}}
+.vpanel .gg{border:0;padding:0;background:none}

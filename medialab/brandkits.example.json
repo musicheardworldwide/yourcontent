@@ -1,0 +1,21 @@
+{"note": "Neutral example brand kits, copied into DATA/brandkits/ the first time the brand kit list is read. After that they are ordinary kits: edit or delete them. Fonts must be ones the render service ships (GET /api/styles lists them).",
+ "kits": [
+  {"id": "paper-studio", "name": "Paper Studio",
+   "colors": {"bg": "#f4f1ea", "fg": "#1c1b19", "accent": "#b5452b", "accent2": "#2f5d62", "muted": "#6e6a62", "paper": "#ffffff", "ink": "#1c1b19"},
+   "fonts": {"display": "Playfair Display", "body": "Inter", "serif": "Playfair Display"},
+   "logo": null, "handle": "paperstudio.example",
+   "voice": "Calm and exact. Short sentences, no exclamation marks, one idea per post.",
+   "default_styles": ["editorial", "split", "list"]},
+  {"id": "night-signal", "name": "Night Signal",
+   "colors": {"bg": "#0b0d12", "fg": "#eef1f6", "accent": "#36d6a0", "accent2": "#8b5cf6", "muted": "#8a93a3"},
+   "fonts": {"display": "Space Grotesk", "body": "Inter", "mono": "JetBrains Mono"},
+   "logo": null, "handle": "@nightsignal",
+   "voice": "Technical and direct. Show the number, then what it means.",
+   "default_styles": ["terminal", "stat", "scrim"]},
+  {"id": "market-day", "name": "Market Day",
+   "colors": {"bg": "#1f1a14", "fg": "#f6efe3", "accent": "#e9a23b", "accent2": "#7a9e4a", "paper": "#f6efe3", "ink": "#1f1a14"},
+   "fonts": {"display": "Big Shoulders Display", "body": "Libre Franklin", "serif": "Libre Caslon Text", "hand": "Caveat"},
+   "logo": null, "handle": "marketday.example",
+   "voice": "Warm and neighbourly. Name the thing, the price and the day.",
+   "default_styles": ["product", "poster", "polaroid"]}
+ ]}

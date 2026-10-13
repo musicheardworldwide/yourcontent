@@ -1,0 +1,7 @@
+{
+  "qwen-image-nc": {"text": "Qwen-Image 2.1 licence (non-commercial research)", "short": "Qwen-Image 2.1 (non-commercial)", "commercial_ok": false},
+  "apache-2.0": {"text": "Apache-2.0", "short": "Apache-2.0", "commercial_ok": true},
+  "ace-step": {"text": "Apache-2.0 / MIT, outputs commercial OK", "short": "ACE-Step 1.5 (commercial OK)", "commercial_ok": true},
+  "upload": {"text": "your upload: rights not checked", "short": "your upload, rights not checked", "commercial_ok": null},
+  "unknown": {"text": "unknown", "short": "licence unknown", "commercial_ok": null}
+}

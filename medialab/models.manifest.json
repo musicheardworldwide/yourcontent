@@ -1,0 +1,133 @@
+{
+ "schema": "media-lab/models-manifest@1",
+ "_note": "Stock Comfy-Org repacks, pinned by revision. Bytes and sha256 from the Hugging Face tree API, 2026-10-07. The manifest names files, never sets: which files a feature needs comes from its graph. URL: <endpoint>/<repo id>/resolve/<rev>/<path>.",
+ "endpoint": "https://huggingface.co",
+ "repos": {
+  "qwen": {
+   "id": "Comfy-Org/Qwen-Image-2.1",
+   "rev": "cb504a4090723e43f17ad01cec0359490e2de613"
+  },
+  "wan": {
+   "id": "Comfy-Org/Wan_2.2_ComfyUI_Repackaged",
+   "rev": "ee6f4a40737a995bf5818954cfce6d59443b0f04"
+  },
+  "ace": {
+   "id": "Comfy-Org/ace_step_1.5_ComfyUI_files",
+   "rev": "6707deb277e9e0907fd9c14ce6b6f1d695c6a3fc"
+  }
+ },
+ "files": {
+  "qwen_image_2.1_bf16.safetensors": {
+   "repo": "qwen",
+   "path": "diffusion_models/qwen_image_2.1_bf16.safetensors",
+   "folder": "diffusion_models",
+   "bytes": 14230280616,
+   "sha256": "89f4158d066cc33906a199fca85634f766892dd78f49b6698dabf187ac86c4bc",
+   "licence": "qwen-image-nc"
+  },
+  "qwen_image_2.1_int8_convrot.safetensors": {
+   "repo": "qwen",
+   "path": "diffusion_models/qwen_image_2.1_int8_convrot.safetensors",
+   "folder": "diffusion_models",
+   "bytes": 7256783064,
+   "sha256": "cb74113cb03faecd79611b01fd7fd642f0aa60d6f0b95086abee214d75eaa57d",
+   "licence": "qwen-image-nc"
+  },
+  "qwen3vl_8b_int8_convrot.safetensors": {
+   "repo": "qwen",
+   "path": "text_encoders/qwen3vl_8b_int8_convrot.safetensors",
+   "folder": "text_encoders",
+   "bytes": 9350798360,
+   "sha256": "8bfd0f6e12abf2d2d697ecc888e5e90b0d6741d6708f05799f53afa560452e8f",
+   "licence": "qwen-image-nc"
+  },
+  "qwen_image_2.1_vae_bf16.safetensors": {
+   "repo": "qwen",
+   "path": "vae/qwen_image_2.1_vae_bf16.safetensors",
+   "folder": "vae",
+   "bytes": 675509688,
+   "sha256": "bb21f7473051e1ac368515dd3f2e15cd44d7a11748ee8823e1ddca3e4876b7c9",
+   "licence": "qwen-image-nc"
+  },
+  "wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors": {
+   "repo": "wan",
+   "path": "split_files/diffusion_models/wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors",
+   "folder": "diffusion_models",
+   "bytes": 14294742832,
+   "sha256": "6122e79d55e0f235698d11d657f3b196c5273c830da00b2b013c5a048d5e6a42",
+   "licence": "apache-2.0"
+  },
+  "wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors": {
+   "repo": "wan",
+   "path": "split_files/diffusion_models/wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors",
+   "folder": "diffusion_models",
+   "bytes": 14294742832,
+   "sha256": "5471a457b6ac404202a5fbe6c11595a3d5641fc766b00f38763f72303fffc21e",
+   "licence": "apache-2.0"
+  },
+  "wan2.2_i2v_lightx2v_4steps_lora_v1_high_noise.safetensors": {
+   "repo": "wan",
+   "path": "split_files/loras/wan2.2_i2v_lightx2v_4steps_lora_v1_high_noise.safetensors",
+   "folder": "loras",
+   "bytes": 1226977424,
+   "sha256": "d176c808d6fc461999b68e321efcb7501b20b8c3797523ed0df14f7d1deff11e",
+   "licence": "apache-2.0"
+  },
+  "wan2.2_i2v_lightx2v_4steps_lora_v1_low_noise.safetensors": {
+   "repo": "wan",
+   "path": "split_files/loras/wan2.2_i2v_lightx2v_4steps_lora_v1_low_noise.safetensors",
+   "folder": "loras",
+   "bytes": 1226977424,
+   "sha256": "024f21de095bc8fad9809ded3e9e49a2e170dcf27075da8145ba7d60d8aab7f9",
+   "licence": "apache-2.0"
+  },
+  "umt5_xxl_fp8_e4m3fn_scaled.safetensors": {
+   "repo": "wan",
+   "path": "split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+   "folder": "text_encoders",
+   "bytes": 6735906897,
+   "sha256": "c3355d30191f1f066b26d93fba017ae9809dce6c627dda5f6a66eaa651204f68",
+   "licence": "apache-2.0"
+  },
+  "wan_2.1_vae.safetensors": {
+   "repo": "wan",
+   "path": "split_files/vae/wan_2.1_vae.safetensors",
+   "folder": "vae",
+   "bytes": 253815318,
+   "sha256": "2fc39d31359a4b0a64f55876d8ff7fa8d780956ae2cb13463b0223e15148976b",
+   "licence": "apache-2.0"
+  },
+  "acestep_v1.5_turbo.safetensors": {
+   "repo": "ace",
+   "path": "split_files/diffusion_models/acestep_v1.5_turbo.safetensors",
+   "folder": "diffusion_models",
+   "bytes": 4787825604,
+   "sha256": "3f6e0797fad420a39bd33979eb6e840e30989e34a3794e843d23b60ec6e422d7",
+   "licence": "ace-step"
+  },
+  "qwen_0.6b_ace15.safetensors": {
+   "repo": "ace",
+   "path": "split_files/text_encoders/qwen_0.6b_ace15.safetensors",
+   "folder": "text_encoders",
+   "bytes": 1191588248,
+   "sha256": "fd4590c82153b8ddb67e15a2e7aaa8afa8b83a858c8a9b82a4831063156aa7a7",
+   "licence": "ace-step"
+  },
+  "qwen_1.7b_ace15.safetensors": {
+   "repo": "ace",
+   "path": "split_files/text_encoders/qwen_1.7b_ace15.safetensors",
+   "folder": "text_encoders",
+   "bytes": 3708523360,
+   "sha256": "ed63e9247d1f55f3ace04fa11e95b085fc82d459c82c5626f0b2e37b91ebd710",
+   "licence": "ace-step"
+  },
+  "ace_1.5_vae.safetensors": {
+   "repo": "ace",
+   "path": "split_files/vae/ace_1.5_vae.safetensors",
+   "folder": "vae",
+   "bytes": 337431732,
+   "sha256": "6de92e3a862acd287e08b024ac90f0783a8635451b728721a33ff03565bcb2bb",
+   "licence": "ace-step"
+  }
+ }
+}

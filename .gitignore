@@ -1,0 +1,46 @@
+# machine-specific and secrets
+compose.override.yaml
+.env
+.env.*
+!.env.example
+# runtime data, outputs, models
+data/
+output/
+outputs/
+models/
+*.safetensors
+*.gguf
+*.ckpt
+*.pt
+*.pth
+*.bin
+*.onnx
+# media never enters git (demo media is hosted elsewhere)
+*.png
+*.jpg
+*.jpeg
+*.webp
+*.gif
+*.heic
+*.mp4
+*.mov
+*.webm
+*.mkv
+*.mp3
+*.wav
+*.m4a
+*.flac
+*.ogg
+*.aac
+*.pdf
+# the UI's fonts arrive at build time (render/fetch_fonts.py), never through git
+static/fonts/
+# python
+__pycache__/
+*.pyc
+.venv/
+# agent tooling (local worktrees)
+.claude/
+
+# Logo exports, rebuilt by brand/build.py --png (no media in git)
+brand/export/
