@@ -19,7 +19,7 @@
   --font-ui:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
   --font-head:"Space Grotesk","Inter",system-ui,sans-serif;
   --font-mono:"JetBrains Mono",ui-monospace,monospace;
-  --r-chip:999px;--r-input:6px;--r-card:4px;--r-panel:10px;
+  --r-chip:999px;--r-input:8px;--r-card:12px;--r-panel:12px;--r-dialog:16px;
   --side:330px;--tap:40px;--ease:.18s ease;
   --st-idea:#6f6b63;--st-draft:#2f6db3;--st-ready:#9a5b00;--st-posted:#1f7a45;--st-skipped:#9a968d;
 }

@@ -2,8 +2,12 @@
 server through server.install_extension(calendar_routes).
 
     GET  /api/calendar?from=YYYY-MM-DD&to=YYYY-MM-DD   {"entries": [...], "statuses": [...]}
-    POST /api/calendar                                 create; body = entry fields -> the entry
-    POST /api/calendar/<id>                            update; body = {"rev": n, ...fields} -> the entry
+    GET  /api/calendar?unscheduled=1                   the entries with no date (when null), oldest first
+    POST /api/calendar                                 create; body = entry fields (+ "note") -> the entry
+    POST /api/calendar/<id>                            update; body = {"rev": n, "note"?, ...fields} -> the entry
+
+"note" (optional, at most 500 characters) goes into the entry's history with the status; the history's "by" is
+"you" for the owner and the agent's name for an agent token (h.agent, set by server.guard).
     POST /api/calendar/<id>/delete                     body = {"rev": n} (rev optional) -> {"ok": true}
     GET  /api/calendar.ics?from=&to=                   text/calendar feed of the same entries
 
@@ -69,21 +73,36 @@ def routes(srv) -> list[tuple[str, str, object]]:
     def _conflict(exc: Conflict):
         return srv.HTTPError(409, str(exc) or "this entry was changed elsewhere", {"current": exc.current})
 
+    def _by(h) -> str:
+        agent = getattr(h, "agent", None)
+        return calendar.clean_by(agent.get("name")) if isinstance(agent, dict) else calendar.OWNER
+
     def r_list(h, m):
-        _json_ok(h, {"entries": calendar.list_entries(*_range(h)), "statuses": list(calendar.STATUSES)})
+        q = srv._query(h)
+        if (q.get("unscheduled") or "") in ("1", "true"):
+            entries = calendar.list_entries(unscheduled=True)
+        else:
+            entries = calendar.list_entries(*_range(h))
+        _json_ok(h, {"entries": entries, "statuses": list(calendar.STATUSES)})
 
     def r_create(h, m):
         body = srv.read_json(h)
-        _json_ok(h, calendar.create(body))
+        if not isinstance(body, dict):
+            raise srv.HTTPError(400, "send the entry as an object")
+        note = body.pop("note", None)
+        _json_ok(h, calendar.create(body, note=note, by=_by(h)))
 
     def r_update(h, m):
         eid = calendar.check_id(m.group(1))
         body = srv.read_json(h)
+        if not isinstance(body, dict):
+            raise srv.HTTPError(400, "send the entry as an object")
         rev = body.pop("rev", None)
+        note = body.pop("note", None)
         if isinstance(rev, bool) or not isinstance(rev, int):
             raise srv.HTTPError(400, "rev must be a number")
         try:
-            _json_ok(h, calendar.update(eid, rev, body))
+            _json_ok(h, calendar.update(eid, rev, body, note=note, by=_by(h)))
         except Conflict as exc:
             raise _conflict(exc) from None
 

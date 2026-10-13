@@ -168,8 +168,8 @@ class TestTexts(unittest.TestCase):
     def test_mp4_comment(self):
         nc = {"commercial_ok": False, "most_restrictive": "qwen-image-nc"}
         c = pv.mp4_comment(nc, "cut_20261007-210000_a1b2c3.mp4")
-        self.assertEqual(c, "YourContent export cut_20261007-210000_a1b2c3.mp4; licence: non-commercial "
-                            "(Qwen-Image 2.1 licence)")
+        self.assertEqual(c, "YourContent export cut_20261007-210000_a1b2c3.mp4; license: non-commercial "
+                            "(Qwen-Image 2.1 license)")
         long = pv.mp4_comment({"commercial_ok": True}, "a;[b]" * 200)
         self.assertLessEqual(len(long), 255)
         self.assertNotIn(";[", long)

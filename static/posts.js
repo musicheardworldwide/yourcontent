@@ -1,27 +1,31 @@
-/* Posts: the style gallery. Every style is drawn small in the chosen brand kit with the words typed on the left;
-   a card opens large, where the post is rendered and saved. Brand kits are edited here too.
-   Vanilla, strict CSP (no inline scripts, styles or HTML strings: DOM nodes only), every POST sends X-Media-Lab: 1.
-   Thumbnails: 320 px previews from the render service, drawn only for cards on screen, at most two at a time (the
-   service draws one at a time anyway), kept in memory and, where the browser allows it, in its Cache Storage for a
-   day, keyed by everything that changes the picture. Typing re-draws the visible cards after a short pause.
-   Use: window.MediaLabPosts.mount(document.getElementById("pane-posts")). */
+/* Posts: a composer. The editor on the left (brand kit chips, a gallery of style cards, the words, the picture,
+   the look and the caption); a live preview on the right that stays in view while you edit (sticky), and that
+   follows the fields on a narrow screen, where Preview scrolls to it. Brand kits are edited in a dialog.
+   Vanilla, strict CSP (no inline scripts, styles or HTML strings: DOM nodes only; colours drawn as SVG fill
+   attributes), every POST sends X-Media-Lab: 1.
+   Style cards: <img loading="lazy"> from GET /api/posts/thumb (320 px, drawn in the kit with sample words and
+   cached on disk by the server; v= changes with the kit and the style's version so the browser can keep it a
+   day). Under every picture sits a swatch drawn from the style's or the kit's colours and font, which is all
+   that shows when the render service is off.
+   Use: window.MediaLabPosts.mount(el); panels beside it marked [data-mlp-canvas] are moved under the composer. */
 (function () {
   "use strict";
 
-  const FORMAT_LABELS = {"1:1": "1:1 square", "4:5": "4:5 feed", "9:16": "9:16 story", "1.91:1": "1.91:1 link"};
+  const CHANNELS = {"4:5": "Instagram feed", "1:1": "Square", "9:16": "Story / Reel", "1.91:1": "Link / LinkedIn"};
   const AR_CLASS = {"1:1": "ar-11", "4:5": "ar-45", "9:16": "ar-916", "1.91:1": "ar-191"};
+  const AR_BOX = {"1:1": [100, 100], "4:5": [100, 125], "9:16": [100, 178], "1.91:1": [191, 100]};
+  const KINDS = [["all", "All"], ["text", "Text"], ["image", "Photo + text"], ["picks", "Kit picks"]];
   const SAMPLE = {kicker: "New this week", headline: "Your headline goes here",
                   body: "One or two short sentences about the post, in your own words.",
                   detail: "Sat 10:00", label: ""};
-  const THUMB_W = 320, ZOOM_W = 1080, IN_FLIGHT = 2, PAUSE = 450, MEM_MAX = 240, STORE_MAX = 600;
-  const STORE = "cc-post-thumbs-1", STORE_DAY = 86400000, PREFS = "ml-posts-view";
+  const PREVIEW_W = 540, PAUSE = 450, PREFS = "ml-posts-composer";
+  const HEX = /^#[0-9a-fA-F]{6}$/;
 
   const S = {kits: [], styles: [], fonts: [], formats: [], render: {ok: false, missing: []}, recent: [],
-             kit: null, image: null, format: "4:5", palette: "brand", kind: "all", show: "all", size: "m",
-             safe: true, mark: true, type: "png", zoom: null, slide: 1, busy: false, editing: null};
-  const T = {queue: [], live: 0, flight: new Set(), mem: new Map(), seen: new Set(), io: null, store: null, puts: 0, timer: 0};
-  let R = null;   /* the mounted root's parts */
-  let zoomTok = 0, zoomUrl = null;
+             kit: null, style: null, image: null, format: "4:5", palette: "brand", kind: "all", q: "",
+             safe: true, mark: true, type: "png", slide: 1, busy: false, editing: null, loaded: false};
+  let R = null;            /* the mounted root's parts */
+  let tok = 0, url = null, timer = 0;
 
   /* ---------------------------------------------------------------- helpers */
   function h(tag, props, ...kids) {
@@ -38,26 +42,24 @@
       el.append(kid instanceof Node ? kid : document.createTextNode(String(kid)));
     return el;
   }
+  const NS = "http://www.w3.org/2000/svg";
+  function svg(tag, attrs) {
+    const el = document.createElementNS(NS, tag);
+    for (const [k, v] of Object.entries(attrs || {})) el.setAttribute(k, String(v));
+    return el;
+  }
   /* an icon from the sprite (icons.svg), always placed beside a text label */
   function icon(name) {
-    const NS = "http://www.w3.org/2000/svg", svg = document.createElementNS(NS, "svg"), use = document.createElementNS(NS, "use");
-    svg.setAttribute("class", "ic"); svg.setAttribute("aria-hidden", "true");
-    use.setAttribute("href", "/static/icons.svg#" + name);
-    svg.append(use);
-    return svg;
+    const s = svg("svg", {class: "ic", "aria-hidden": "true"}), use = svg("use", {href: "/static/icons.svg#" + name});
+    s.append(use);
+    return s;
   }
+  const hex = (c, fb) => HEX.test(c || "") ? c : fb;
   /* colour dots as SVG: a fill attribute is not a style, so the CSP allows it */
   function swatches(colors) {
-    const NS = "http://www.w3.org/2000/svg", svg = document.createElementNS(NS, "svg");
-    svg.setAttribute("class", "mlp-sw"); svg.setAttribute("viewBox", "0 0 " + (colors.length * 10 + 2) + " 12");
-    svg.setAttribute("aria-hidden", "true");
-    colors.forEach((c, i) => {
-      const dot = document.createElementNS(NS, "circle");
-      dot.setAttribute("cx", String(6 + i * 10)); dot.setAttribute("cy", "6"); dot.setAttribute("r", "5");
-      dot.setAttribute("fill", /^#[0-9a-fA-F]{6}$/.test(c || "") ? c : "#888888");
-      svg.append(dot);
-    });
-    return svg;
+    const s = svg("svg", {class: "mlp-sw", viewBox: "0 0 " + (colors.length * 10 + 2) + " 12", "aria-hidden": "true"});
+    colors.forEach((c, i) => s.append(svg("circle", {cx: 6 + i * 10, cy: 6, r: 5, fill: hex(c, "#888888")})));
+    return s;
   }
   function field(label, input, hint) {
     const id = input.id || ("mlp-" + Math.random().toString(36).slice(2, 9));
@@ -69,7 +71,7 @@
   function say(el, msg, kind) { el.textContent = msg || ""; el.classList.toggle("err", kind === "err"); el.classList.toggle("warn", kind === "warn"); }
   function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
   function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* private window */ } }
-  /* cyrb53: a short stable hash for cache keys (not security) */
+  /* cyrb53: a short stable hash for cache-busting (not security) */
   function hash(str) {
     let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
     for (let i = 0; i < str.length; i++) {
@@ -79,6 +81,11 @@
     h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
     h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
     return (h2 >>> 0).toString(16).padStart(8, "0") + (h1 >>> 0).toString(16).padStart(8, "0");
+  }
+  /* one line and one action: every empty state */
+  function empty(line, label, iconName, fn) {
+    return h("div", {class: "mlp-empty"}, h("p", {text: line}),
+      fn ? h("button", {type: "button", class: "ghost", on: {click: fn}}, iconName ? icon(iconName) : null, label) : null);
   }
 
   async function api(method, path, body, wantBlob) {
@@ -109,21 +116,29 @@
       api("GET", "/api/brandkits").catch(() => ({kits: []})),
       api("GET", "/api/recent?kind=image&limit=24").catch(() => []),
     ]);
-    S.styles = st.styles || []; S.fonts = st.fonts || []; S.formats = st.formats || ["1:1", "4:5", "9:16", "1.91:1"];
+    S.styles = st.styles || []; S.fonts = st.fonts || []; S.formats = (st.formats && st.formats.length) ? st.formats : ["4:5", "1:1", "9:16", "1.91:1"];
     S.render = st.render || {ok: false, missing: []};
     S.kits = kits.kits || [];
     S.recent = Array.isArray(recent) ? recent : [];
+    S.loaded = true;
     if (!S.formats.includes(S.format)) S.format = S.formats.includes("4:5") ? "4:5" : S.formats[0];
     if (!S.kit || !S.kits.some(k => k.id === S.kit.id)) S.kit = S.kits[0] || null;
     else S.kit = S.kits.find(k => k.id === S.kit.id);
+    pickDefaultStyle();
     tellKit();
     renderAll();
   }
   function tellKit() { window.dispatchEvent(new CustomEvent("medialab:kit", {detail: S.kit ? S.kit.id : ""})); }
   const styleOf = id => S.styles.find(s => s.id === id);
   const picks = () => new Set((S.kit && S.kit.default_styles) || []);
+  function pickDefaultStyle() {
+    if (S.style && styleOf(S.style)) return;
+    const pk = [...picks()].find(styleOf);
+    S.style = pk || (S.styles[0] && S.styles[0].id) || null;
+    S.slide = 1;
+  }
 
-  /* the words: what was typed, or the sample when nothing has been typed yet (previews only) */
+  /* the words: what was typed, or the sample when no headline has been typed yet (previews only) */
   function words(forSave) {
     const t = {label: R.label.value, kicker: R.kicker.value, headline: R.headline.value, body: R.body.value,
                detail: R.detail.value, handle: R.handle.value};
@@ -133,277 +148,266 @@
     }
     return Object.assign({}, SAMPLE, {handle: (S.kit && S.kit.handle) || "@yourbrand"});
   }
-  function payload(st, preview, width, slide) {
+  function payload(st, preview) {
     const p = {kit: S.kit && S.kit.id, style: st.id, format: S.format, palette: S.palette,
-               image: st.kind === "image" ? S.image : null, preview, slide: slide || 1, mark: S.mark,
+               image: st.kind === "image" ? S.image : null, preview, slide: S.slide, mark: S.mark,
                safe_area: S.safe, type: preview ? "png" : S.type, text: words(!preview)};
-    if (preview) p.width = width;
+    if (preview) p.width = PREVIEW_W;
     else p.caption = R.caption.value;
     return p;
   }
 
-  /* ---------------------------------------------------------------- sidebar */
+  /* ---------------------------------------------------------------- the editor */
   function renderAll() {
-    const off = !S.render.ok;
+    const off = S.loaded && !S.render.ok;
     R.service.hidden = !off;
-    R.service.textContent = off ? "Posts are off: " + ((S.render.missing || [])[0] || "the render service is not reachable") +
+    R.service.textContent = off ? "Previews are off: " + ((S.render.missing || [])[0] || "the render service is not reachable") +
       ". Start the render service (compose service \"render\") and reload." : "";
     R.kits.replaceChildren(...(S.kits.length ? S.kits.map(k => h("button", {type: "button", class: "chip",
         "aria-pressed": String(!!S.kit && k.id === S.kit.id), title: k.handle || k.name,
-        on: {click: () => { S.kit = k; tellKit(); renderAll(); }}},
-      swatches([(k.colors || {}).bg, (k.colors || {}).accent, (k.colors || {}).fg]), k.name))
-      : [h("span", {class: "hint", text: "No brand kits yet: make one with New kit."})]));
-    R.editKit.disabled = !S.kit;
+        on: {click: () => { S.kit = k; S.style = styleOf(S.style) ? S.style : null; pickDefaultStyle(); tellKit(); renderAll(); }}},
+      swatches([(k.colors || {}).bg, (k.colors || {}).accent, (k.colors || {}).fg]), k.name)) : []));
+    R.editKit.hidden = !S.kit;
     R.handle.placeholder = (S.kit && S.kit.handle) || "@account or website";
-    renderThumbs();
-    renderTools();
+    renderPictures();
+    renderFilters();
+    renderLook();
     renderGallery();
+    drawPreview(true);
   }
 
-  function renderThumbs() {
-    const none = h("button", {type: "button", class: "mlp-thumb mlp-none", "aria-pressed": String(!S.image),
-                              text: "No picture", on: {click: () => { S.image = null; renderThumbs(); redraw(); }}});
-    const items = S.recent.map(it => h("button", {type: "button", class: "mlp-thumb", title: it.label || it.ref.name,
+  function renderPictures() {
+    const none = h("button", {type: "button", class: "mlp-pic mlp-none", "aria-pressed": String(!S.image),
+                              text: "No picture", on: {click: () => { S.image = null; renderPictures(); drawPreview(true); }}});
+    const items = S.recent.map(it => h("button", {type: "button", class: "mlp-pic", title: it.label || it.ref.name,
         "aria-label": "Use " + (it.label || it.ref.name), "aria-pressed": String(!!S.image && S.image.name === it.ref.name && S.image.root === it.ref.root),
-        on: {click: () => { S.image = it.ref; renderThumbs(); redraw(); }}},
+        on: {click: () => { S.image = it.ref; renderPictures(); drawPreview(true); }}},
       h("img", {src: it.poster || it.url, alt: "", loading: "lazy"})));
-    R.thumbs.replaceChildren(none, ...items);
-    R.noPics.hidden = S.recent.length > 0;
+    R.pics.replaceChildren(none, ...items);
+    const make = window.MediaLabStudio ? () => window.MediaLabStudio.show("make") : null;
+    R.noPics.replaceChildren(...(S.recent.length ? [] : [empty("No pictures yet. Photo styles show a placeholder until you add one.",
+                                                              "Make a picture", "image", make)]));
   }
 
-  /* ---------------------------------------------------------------- toolbar: chips over the gallery */
-  function chips(label, opts, get, set) {
-    return h("div", {class: "mlp-tool"}, h("span", {class: "lbl", text: label}),
-      h("div", {class: "chips", role: "group", "aria-label": label}, opts.map(([v, text]) =>
-        h("button", {type: "button", class: "chip", "aria-pressed": String(get() === v), text,
-                     on: {click: () => { set(v); savePrefs(); renderTools(); renderGallery(); }}}))));
+  function chipGroup(label, opts, get, set, cls) {
+    return h("div", {class: "chips " + (cls || ""), role: "group", "aria-label": label}, opts.map(([v, text]) =>
+      h("button", {type: "button", class: "chip", "aria-pressed": String(get() === v), text,
+                   on: {click: () => { set(v); savePrefs(); }}})));
   }
-  function renderTools() {
-    const tools = [
-      chips("Kind", [["all", "All"], ["text", "Text"], ["image", "Photo + text"]], () => S.kind, v => { S.kind = v; }),
-      chips("Format", S.formats.map(f => [f, FORMAT_LABELS[f] || f]), () => S.format, v => { S.format = v; }),
-      chips("Colours", [["brand", "Kit"], ["invert", "Inverted"], ["own", "Style's own"]], () => S.palette, v => { S.palette = v; }),
-      S.format === "9:16" ? chips("Story safe area", [[true, "On"], [false, "Off"]], () => S.safe, v => { S.safe = v; }) : null,
-      chips("Size", [["s", "S"], ["m", "M"], ["l", "L"]], () => S.size, v => { S.size = v; }),
-      chips("Show", [["all", "All"], ["picks", "Kit picks"]], () => S.show, v => { S.show = v; }),
+  function renderFilters() {
+    R.channels.replaceChildren(chipGroup("Channel", S.formats.map(f => [f, (CHANNELS[f] || f) + " " + f]),
+      () => S.format, v => { S.format = v; renderFilters(); renderLook(); renderGallery(); drawPreview(true); }, "mlp-scrollchips"));
+    R.kinds.replaceChildren(chipGroup("Kind of style", KINDS, () => S.kind,
+      v => { S.kind = v; renderFilters(); renderGallery(); }, "mlp-scrollchips"));
+  }
+  function renderLook() {
+    const rows = [
+      h("div", {class: "mlp-look"}, h("span", {class: "label", text: "Colors"}),
+        chipGroup("Colors", [["brand", "Kit"], ["invert", "Inverted"], ["own", "Style's own"]], () => S.palette,
+          v => { S.palette = v; renderLook(); renderGallery(); drawPreview(true); })),
+      S.format === "9:16" ? h("div", {class: "mlp-look"}, h("span", {class: "label", text: "Story safe area"}),
+        chipGroup("Story safe area", [[true, "On"], [false, "Off"]], () => S.safe,
+          v => { S.safe = v; renderLook(); drawPreview(true); })) : null,
+      h("div", {class: "mlp-look"}, h("span", {class: "label", text: "On the post"}),
+        chipGroup("On the post", [[true, "Logo or wordmark"], [false, "No mark"]], () => S.mark,
+          v => { S.mark = v; renderLook(); drawPreview(true); })),
     ];
-    R.tools.replaceChildren(...tools.filter(Boolean), R.count);
+    R.look.replaceChildren(...rows.filter(Boolean));
   }
   function savePrefs() {
-    lsSet(PREFS, JSON.stringify({format: S.format, palette: S.palette, kind: S.kind, show: S.show, size: S.size, safe: S.safe}));
+    lsSet(PREFS, JSON.stringify({format: S.format, palette: S.palette, kind: S.kind, safe: S.safe, style: S.style}));
   }
   function loadPrefs() {
     try {
       const p = JSON.parse(lsGet(PREFS) || "{}");
       if (typeof p.format === "string") S.format = p.format;
       if (["brand", "invert", "own"].includes(p.palette)) S.palette = p.palette;
-      if (["all", "text", "image"].includes(p.kind)) S.kind = p.kind;
-      if (["all", "picks"].includes(p.show)) S.show = p.show;
-      if (["s", "m", "l"].includes(p.size)) S.size = p.size;
+      if (KINDS.some(k => k[0] === p.kind)) S.kind = p.kind;
       if (typeof p.safe === "boolean") S.safe = p.safe;
+      if (typeof p.style === "string") S.style = p.style;
     } catch (e) { /* ignore a bad saved value */ }
   }
 
-  /* ---------------------------------------------------------------- the gallery */
-  function cardFor(st) {
-    let P = R.parts.get(st.id);
-    if (!P) {
-      P = {};
-      P.img = h("img", {class: "mlp-shot", alt: "", hidden: true, draggable: false});
-      P.wait = h("span", {class: "mlp-wait", text: "Waiting…"});
-      P.frame = h("button", {type: "button", class: "mlp-frame", "aria-label": "Open " + st.name + " large",
-                             on: {click: () => openZoom(st.id)}}, P.img, P.wait);
-      P.star = h("button", {type: "button", class: "mlp-star", text: "★", title: "Kit pick",
-                            "aria-label": "Kit pick: " + st.name, on: {click: () => togglePick(st.id, P.star)}});
-      P.card = h("article", {class: "mlp-card", "data-style": st.id}, P.frame,
-        h("div", {class: "mlp-meta"}, h("span", {class: "mlp-name", text: st.name}),
-          h("span", {class: "mlp-tags", text: st.tags + (st.slides > 1 ? " · " + st.slides + " slides" : "")}), P.star));
-      R.parts.set(st.id, P);
-      if (T.io) T.io.observe(P.card);
+  /* ---------------------------------------------------------------- the style gallery */
+  function kindLabel(st) { return st.kind === "image" ? "Photo" : "Text"; }
+  function tagOf(st) {
+    const first = String(st.tags || "").split("·")[0].trim();
+    return kindLabel(st) + (first ? " · " + first : "") + (st.slides > 1 ? " · " + st.slides + " slides" : "");
+  }
+  /* the swatch under every card: the colours and font the card would be drawn in */
+  function swatch(st) {
+    const [w, hh] = AR_BOX[S.format] || AR_BOX["4:5"];
+    const k = (S.kit && S.kit.colors) || {}, kf = (S.kit && S.kit.fonts) || {}, own = st.own || {};
+    let bg, fg, ac, font;
+    if (S.palette === "own" && own.bg) { bg = own.bg; fg = own.fg; ac = own.ac || own.ac2; font = Object.values(st.fonts || {})[0]; }
+    else if (S.palette === "invert") { bg = k.fg; fg = k.bg; ac = k.accent; font = kf.display; }
+    else { bg = k.bg || own.bg; fg = k.fg || own.fg; ac = k.accent || own.ac; font = kf.display || Object.values(st.fonts || {})[0]; }
+    const s = svg("svg", {class: "mlp-swatch", viewBox: "0 0 " + w + " " + hh, preserveAspectRatio: "xMidYMid slice", "aria-hidden": "true"});
+    s.append(svg("rect", {x: 0, y: 0, width: w, height: hh, fill: hex(bg, "#2a2a2a")}));
+    if (st.kind === "image") s.append(svg("rect", {x: 0, y: 0, width: w, height: hh * 0.55, fill: hex(fg, "#dddddd"), "fill-opacity": ".18"}));
+    const t = svg("text", {x: 12, y: hh * 0.72, fill: hex(fg, "#f5f5f5"), "font-size": 30, "font-weight": 700,
+                           "font-family": String(font || "sans-serif").replace(/[^\w\s',-]/g, "")});
+    t.textContent = "Aa";
+    s.append(t, svg("rect", {x: 12, y: hh * 0.72 + 8, width: 28, height: 4, fill: hex(ac, "#e8b14a")}));
+    return s;
+  }
+  function thumbUrl(st) {
+    const v = hash(JSON.stringify([S.kit, st.version || ""]));
+    return "/api/posts/thumb?" + new URLSearchParams([["kit", S.kit.id], ["style", st.id], ["format", S.format],
+                                                      ["palette", S.palette], ["v", v]]).toString();
+  }
+  function card(st) {
+    const box = h("span", {class: "mlp-cardpic " + (AR_CLASS[S.format] || "ar-45")}, swatch(st));
+    if (S.render.ok && S.kit) {
+      const img = h("img", {class: "mlp-shot", alt: "", loading: "lazy", decoding: "async", draggable: false,
+                            src: thumbUrl(st), on: {error: () => img.remove(), load: () => img.classList.add("in")}});
+      box.append(img);
     }
-    P.frame.className = "mlp-frame " + (AR_CLASS[S.format] || "ar-45");
-    P.frame.disabled = !S.render.ok || !S.kit;
-    P.star.setAttribute("aria-pressed", String(picks().has(st.id)));
-    P.star.disabled = !S.kit;
-    return P.card;
+    const selected = st.id === S.style;
+    return h("button", {type: "button", class: "mlp-card", "data-style": st.id, "aria-pressed": String(selected),
+                        tabindex: selected ? "0" : "-1", "aria-label": st.name + ", " + tagOf(st),
+                        on: {click: () => choose(st.id)}},
+      box, h("span", {class: "mlp-name", text: st.name}), h("span", {class: "mlp-tag", text: tagOf(st)}));
+  }
+  function filtered() {
+    const pk = picks(), q = S.q.trim().toLowerCase();
+    return S.styles.filter(s => (S.kind === "all" || (S.kind === "picks" ? pk.has(s.id) : s.kind === S.kind)) &&
+      (!q || (s.name + " " + s.tags + " " + kindLabel(s)).toLowerCase().includes(q)));
   }
   function renderGallery() {
-    const pk = picks();
-    const list = S.styles.filter(s => (S.kind === "all" || s.kind === S.kind) && (S.show === "all" || pk.has(s.id)));
-    R.gallery.className = "mlp-gallery size-" + S.size;
-    R.count.textContent = S.styles.length ? list.length + " of " + S.styles.length + " styles" : "";
-    const empty = !S.styles.length ? "No styles: the render service is off." :
-      !S.kit ? "Make a brand kit first (New kit, on the left): every style is drawn in its colours and fonts." :
-      !list.length ? (S.show === "picks" ? "No kit picks yet. Tap ★ on a style to pick it for this kit." : "No styles of this kind.") : "";
-    R.gallery.replaceChildren(...list.map(cardFor), ...(empty ? [h("p", {class: "hint mlp-empty", text: empty})] : []));
-    redraw(true);
+    const list = filtered();
+    R.count.textContent = S.styles.length ? list.length + " of " + S.styles.length : "";
+    let kids;
+    if (!S.loaded) kids = [h("p", {class: "hint", text: "Loading styles…"})];
+    else if (!S.styles.length) kids = [empty("No styles: the render service is off.", "Try again", null, () => loadAll())];
+    else if (!list.length) kids = [S.kind === "picks" && !S.q
+      ? empty("This kit has no picks yet.", "Choose picks", null, () => S.kit && openEditor(S.kit))
+      : empty("No styles match.", "Clear filters", null, () => { S.q = ""; R.search.value = ""; S.kind = "all"; savePrefs(); renderFilters(); renderGallery(); })];
+    else kids = list.map(card);
+    R.gallery.replaceChildren(...kids);
+    if (list.length && !list.some(s => s.id === S.style)) {
+      const first = R.gallery.querySelector(".mlp-card");
+      if (first) first.tabIndex = 0;
+    }
+  }
+  function choose(id) {
+    if (!styleOf(id)) return;
+    S.style = id; S.slide = 1;
+    for (const c of R.gallery.querySelectorAll(".mlp-card")) {
+      const on = c.dataset.style === id;
+      c.setAttribute("aria-pressed", String(on)); c.tabIndex = on ? 0 : -1;
+    }
+    savePrefs();
+    drawPreview(true);
+  }
+  /* arrows move through the cards (a grid on wide screens, one row on narrow ones); Home and End jump */
+  function galleryKeys(e) {
+    const cards = [...R.gallery.querySelectorAll(".mlp-card")];
+    const i = cards.indexOf(document.activeElement);
+    if (i < 0) return;
+    const top = cards[0].offsetTop;
+    let cols = cards.findIndex(c => c.offsetTop !== top);
+    if (cols < 0) cols = cards.length;
+    const row = cols >= cards.length ? 1 : cols;
+    const step = {ArrowRight: 1, ArrowLeft: -1, ArrowDown: row, ArrowUp: -row, Home: -i, End: cards.length - 1 - i}[e.key];
+    if (step === undefined) return;
+    e.preventDefault();
+    const j = Math.max(0, Math.min(cards.length - 1, i + step));
+    for (const c of cards) c.tabIndex = -1;
+    cards[j].tabIndex = 0;
+    cards[j].focus();
+    cards[j].scrollIntoView({block: "nearest", inline: "nearest"});
   }
 
-  /* ---------------------------------------------------------------- thumbnails: queue, memory and browser cache */
-  function redraw(now) {
-    clearTimeout(T.timer);
-    if (now) { queueVisible(); return; }
-    T.timer = setTimeout(queueVisible, PAUSE);
+  /* ---------------------------------------------------------------- the live preview */
+  function drawPreview(now) {
+    clearTimeout(timer);
+    if (now) { timer = 0; paint(); return; }
+    timer = setTimeout(paint, PAUSE);
   }
-  function queueVisible() {
-    T.queue = [];
-    if (!S.render.ok || !S.kit) return;
-    const cards = [...R.gallery.querySelectorAll(".mlp-card")].filter(c => !T.io || T.seen.has(c.dataset.style));
-    for (const c of cards) want(c.dataset.style);
-    pump();
+  function setFrame(content) {
+    R.pframe.className = "mlp-pframe " + (AR_CLASS[S.format] || "ar-45");
+    R.pframe.replaceChildren(...content);
   }
-  function want(id) {
-    const st = styleOf(id), P = R.parts.get(id);
-    if (!st || !P || !S.kit) return;
-    const p = payload(st, true, THUMB_W, 1);
-    const k = hash(JSON.stringify([S.kit, S.styles, p]));
-    if (P.key === k && (P.shown === k || T.flight.has(k) || T.queue.some(j => j.k === k))) return;
-    P.key = k;
-    const url = T.mem.get(k);
-    if (url) { show(P, k, url); return; }
-    P.frame.classList.add("busy");
-    if (!P.shown) say(P.wait, "Waiting…");
-    T.queue.push({id, k, p});
-  }
-  function pump() {
-    while (T.live < IN_FLIGHT && T.queue.length) {
-      const job = T.queue.shift(), P = R.parts.get(job.id);
-      if (!P || P.key !== job.k) continue;          /* the words changed since it was queued */
-      T.live++; T.flight.add(job.k);
-      if (!P.shown) say(P.wait, "Drawing…");
-      draw(job).finally(() => { T.live--; T.flight.delete(job.k); pump(); });
-    }
-  }
-  async function draw(job) {
-    const P = R.parts.get(job.id);
-    try {
-      let url = await fromStore(job.k);
-      if (!url) {
-        const blob = await api("POST", "/api/posts/render", job.p, true);
-        url = URL.createObjectURL(blob);
-        toStore(job.k, blob);
-      }
-      remember(job.k, url);
-      if (P.key === job.k) show(P, job.k, url);
-    } catch (e) {
-      if (P.key === job.k) { P.frame.classList.remove("busy"); if (!P.shown) say(P.wait, "Couldn't draw it: " + e.message, "err"); }
-    }
-  }
-  function show(P, k, url) {
-    P.img.src = url; P.img.hidden = false; P.shown = k;
-    P.wait.hidden = true; P.frame.classList.remove("busy");
-  }
-  function remember(k, url) {
-    T.mem.set(k, url);
-    if (T.mem.size <= MEM_MAX) return;
-    const inUse = new Set([...R.parts.values()].map(P => P.shown));
-    for (const [old, u] of T.mem) {
-      if (T.mem.size <= MEM_MAX) break;
-      if (inUse.has(old)) continue;
-      T.mem.delete(old); URL.revokeObjectURL(u);
-    }
-  }
-  /* Cache Storage only exists on https or localhost; elsewhere the memory copy is all there is */
-  async function store() {
-    if (T.store === null) {
-      try { T.store = window.caches ? await window.caches.open(STORE) : false; } catch (e) { T.store = false; }
-    }
-    return T.store;
-  }
-  const storeKey = k => location.origin + "/thumbs-cache/" + k;   /* a key in this browser only, never requested */
-  async function fromStore(k) {
-    const c = await store();
-    if (!c) return null;
-    try {
-      const r = await c.match(storeKey(k));
-      if (!r) return null;
-      if (Date.now() - Number(r.headers.get("X-Saved") || 0) > STORE_DAY) { c.delete(storeKey(k)); return null; }
-      return URL.createObjectURL(await r.blob());
-    } catch (e) { return null; }
-  }
-  async function toStore(k, blob) {
-    const c = await store();
-    if (!c) return;
-    try {
-      await c.put(storeKey(k), new Response(blob, {headers: {"Content-Type": blob.type, "X-Saved": String(Date.now())}}));
-      if (++T.puts % 50 === 0) {
-        const keys = await c.keys();
-        for (const old of keys.slice(0, Math.max(0, keys.length - STORE_MAX))) await c.delete(old);
-      }
-    } catch (e) { /* full or blocked: the memory copy still works */ }
-  }
-
-  /* ---------------------------------------------------------------- kit picks (★) */
-  async function togglePick(id, btn) {
-    const kit = S.kit;
-    if (!kit) return;
-    const cur = kit.default_styles || [];
-    const next = cur.includes(id) ? cur.filter(x => x !== id) : [...cur, id];
-    btn.disabled = true;
-    try {
-      S.kit = await api("POST", "/api/brandkits/" + encodeURIComponent(kit.id), Object.assign(bodyOf(kit), {default_styles: next}));
-      S.kits = S.kits.map(k => k.id === S.kit.id ? S.kit : k);
-      renderGallery();
-    } catch (e) { say(R.status, e.message, "err"); }
-    btn.disabled = false;
-  }
-  function bodyOf(k) {
-    return {name: k.name, handle: k.handle || "", voice: k.voice || "", colors: k.colors || {}, fonts: k.fonts || {},
-            logo: k.logo || null, default_styles: k.default_styles || []};
-  }
-
-  /* ---------------------------------------------------------------- one style, large */
-  function openZoom(id) {
-    const st = styleOf(id);
-    if (!st || !S.kit) return;
-    S.zoom = id; S.slide = 1;
-    R.ztitle.textContent = st.name;
-    R.ztags.textContent = st.tags + " · " + (FORMAT_LABELS[S.format] || S.format) + " · " + S.kit.name;
-    R.zslides.hidden = st.slides < 2;
-    R.zresult.replaceChildren();
-    say(R.zstatus, "");
-    const P = R.parts.get(id);
-    R.zimg.src = P && P.shown ? P.img.src : "";
-    R.zimg.hidden = !(P && P.shown);
-    R.zframe.className = "mlp-zframe " + (AR_CLASS[S.format] || "ar-45");
-    renderSlide(st);
-    R.zoom.showModal();
-    R.zsave.focus();
-    drawZoom();
-  }
-  function renderSlide(st) { R.zslide.textContent = "Slide " + S.slide + " of " + st.slides; R.zprev.disabled = S.slide <= 1; R.znext.disabled = S.slide >= st.slides; }
-  async function drawZoom() {
-    const st = styleOf(S.zoom), tok = ++zoomTok;
-    R.zframe.classList.add("busy");
-    say(R.zstatus, "Drawing it large…");
-    try {
-      const blob = await api("POST", "/api/posts/render", payload(st, true, ZOOM_W, S.slide), true);
-      if (tok !== zoomTok) return;
-      if (zoomUrl) URL.revokeObjectURL(zoomUrl);
-      zoomUrl = URL.createObjectURL(blob);
-      R.zimg.src = zoomUrl; R.zimg.hidden = false;
-      say(R.zstatus, R.headline.value.trim() ? "Preview, not saved yet." : "Preview with sample words. Type yours under Words.");
-    } catch (e) {
-      if (tok === zoomTok) say(R.zstatus, e.message, "err");
-    } finally {
-      if (tok === zoomTok) R.zframe.classList.remove("busy");
-    }
-  }
-  async function save() {
-    const st = styleOf(S.zoom);
-    if (!R.headline.value.trim()) {
-      say(R.zstatus, "Write a headline first, under Words. The preview uses sample words.", "err");
+  async function paint() {
+    const st = styleOf(S.style), my = ++tok;
+    R.slides.hidden = true;
+    R.save.disabled = !(st && S.kit && S.render.ok) || S.busy;
+    R.previewBtn.disabled = !(st && S.kit && S.render.ok);
+    if (!S.loaded) { setFrame([h("span", {class: "mlp-wait", text: "Loading…"})]); return; }
+    if (!S.kit) {
+      R.ptitle.textContent = "Your post";
+      R.ptags.textContent = "";
+      setFrame([empty("Make a brand kit to see your post in its colors.", "New kit", "plus", () => openEditor(null))]);
+      say(R.pstatus, "");
       return;
     }
-    S.busy = true; R.zsave.disabled = true;
-    say(R.zstatus, "Rendering and saving…");
+    if (!st) { R.ptitle.textContent = "Your post"; setFrame([empty("Pick a style on the left.", null)]); return; }
+    R.ptitle.textContent = st.name;
+    R.ptags.textContent = (CHANNELS[S.format] || S.format) + " " + S.format + " · " + S.kit.name;
+    if (st.slides > 1) {
+      R.slides.hidden = false;
+      S.slide = Math.min(S.slide, st.slides);
+      R.slide.textContent = "Slide " + S.slide + " of " + st.slides;
+      R.sprev.disabled = S.slide <= 1; R.snext.disabled = S.slide >= st.slides;
+    }
+    if (!S.render.ok) {
+      setFrame([swatch(st), empty("Previews are off: the render service isn't running.", "Try again", null, () => loadAll())]);
+      R.pframe.classList.add("off");
+      say(R.pstatus, "");
+      return;
+    }
+    setFrame([swatch(st), R.pimg]);
+    R.pframe.classList.add("busy");
+    say(R.pstatus, "Drawing the preview…");
     try {
-      const out = await api("POST", "/api/posts/render", payload(st, false, 0, S.slide));
-      R.zimg.src = out.item.url; R.zimg.hidden = false;
+      const blob = await api("POST", "/api/posts/render", payload(st, true), true);
+      if (my !== tok) return;
+      if (url) URL.revokeObjectURL(url);
+      url = URL.createObjectURL(blob);
+      R.pimg.src = url; R.pimg.hidden = false;
+      R.pimg.alt = "Preview of the post in " + st.name;
+      say(R.pstatus, R.headline.value.trim() ? "Live preview. Not saved yet." : "Sample words. Type a headline to make it yours.");
+    } catch (e) {
+      if (my === tok) say(R.pstatus, "Couldn't draw the preview: " + e.message, "err");
+    } finally {
+      if (my === tok) R.pframe.classList.remove("busy");
+    }
+  }
+  /* Preview: draw now and bring the preview into view (it follows the fields on a narrow screen) */
+  function previewNow() {
+    drawPreview(true);
+    showPreview();
+  }
+  function showPreview() {
+    const r = R.preview.getBoundingClientRect();
+    if (r.top < 0 || r.top > window.innerHeight - 120) {
+      R.preview.scrollIntoView({block: "start"});   /* instant: a smooth scroll can be dropped mid-way */
+      R.preview.focus({preventScroll: true});
+    }
+  }
+
+  async function save() {
+    const st = styleOf(S.style);
+    if (!st || !S.kit) return;
+    if (!R.headline.value.trim()) {
+      say(R.status, "Write a headline first. The preview uses sample words.", "err");
+      R.headline.focus();
+      return;
+    }
+    S.busy = true; R.save.disabled = true;
+    say(R.status, "Rendering and saving…");
+    say(R.pstatus, "Rendering and saving…");
+    showPreview();
+    try {
+      const out = await api("POST", "/api/posts/render", payload(st, false));
+      tok++;
+      R.pimg.src = out.item.url; R.pimg.hidden = false;
+      R.pframe.classList.remove("busy");
       const lic = out.commercial_ok === true ? "Commercial use OK." :
-        out.commercial_ok === false ? "Not for commercial use." : "Licence unknown: check before commercial use.";
+        out.commercial_ok === false ? "Not for commercial use." : "License unknown: check before commercial use.";
       const cal = window.MediaLabCalendar && window.MediaLabStudio;
-      R.zresult.replaceChildren(
+      R.result.replaceChildren(
         h("p", {}, "Saved as ", h("a", {href: out.item.url + "?dl=1", text: out.item.ref.name, download: out.item.ref.name}),
           " (" + out.info.w + "×" + out.info.h + ")."),
         h("p", {class: out.commercial_ok === true ? "hint" : "status warn", text: lic}),
@@ -412,18 +416,19 @@
         h("div", {class: "mlp-row"},
           h("a", {class: "btn ghost", href: out.item.url + "?dl=1", download: out.item.ref.name}, icon("download"), "Download"),
           cal ? h("button", {type: "button", class: "ghost", on: {click: () => toCalendar(out)}}, icon("calendar"), "Add to calendar") : null));
-      say(R.zstatus, "Saved. It's in your recent files too.");
-      api("GET", "/api/recent?kind=image&limit=24").then(r => { S.recent = r; renderThumbs(); }).catch(() => {});
+      say(R.status, "Saved. It's in your recent files too.");
+      say(R.pstatus, "Saved.");
+      api("GET", "/api/recent?kind=image&limit=24").then(r => { S.recent = r; renderPictures(); }).catch(() => {});
     } catch (e) {
-      say(R.zstatus, e.message, "err");
+      say(R.status, e.message, "err");
+      say(R.pstatus, e.message, "err");
     } finally {
-      S.busy = false; R.zsave.disabled = false;
+      S.busy = false; R.save.disabled = false;
     }
   }
   function toCalendar(out) {
     const host = document.querySelector("#view-calendar .viewbody");
     if (!host || !window.MediaLabStudio || !window.MediaLabCalendar) return;
-    R.zoom.close();
     window.MediaLabStudio.show("calendar");
     const cal = window.MediaLabCalendar.mount(host);
     if (cal && cal.add) cal.add({asset: out.item.ref, title: R.headline.value.trim(), caption: R.caption.value});
@@ -472,24 +477,24 @@
       on: {click: () => { E.picked = E.picked.includes(s.id) ? E.picked.filter(x => x !== s.id) : [...E.picked, s.id]; drawPicks(); }}})));
     drawPicks();
     E.status = h("p", {class: "status", role: "status", "aria-live": "polite"});
-    const save = h("button", {type: "submit", text: kit ? "Save kit" : "Create kit"});
+    const saveBtn = h("button", {type: "submit", text: kit ? "Save kit" : "Create kit"});
     const del = kit ? h("button", {type: "button", class: "ghost danger", text: "Delete kit", on: {click: () => deleteKit(kit, E)}}) : null;
     const cancel = h("button", {type: "button", class: "ghost", text: "Cancel", on: {click: closeEditor}});
     const form = h("form", {class: "mlp-kitform", on: {submit: ev => { ev.preventDefault(); saveKit(E); }}},
       h("h2", {text: kit ? "Edit brand kit" : "New brand kit"}),
       field("Name", E.name), field("Handle", E.handle),
-      h("fieldset", {}, h("legend", {text: "Colours"}), h("div", {class: "mlp-cols"}, colorRows)),
+      h("fieldset", {}, h("legend", {text: "Colors"}), h("div", {class: "mlp-cols"}, colorRows)),
       h("fieldset", {}, h("legend", {text: "Fonts"}), h("div", {class: "mlp-cols"}, fontRows)),
       field("Logo (optional)", E.logo, "One of your pictures; a transparent PNG works best."),
       field("Voice", E.voice),
       h("div", {class: "mlp-field"}, h("span", {class: "label", text: "Kit picks"}), pickChips,
-        h("span", {class: "hint", text: "Styles that suit this kit. Show › Kit picks lists only these."})),
-      h("div", {class: "mlp-row"}, save, cancel, h("span", {class: "sp"}), del), E.status);
+        h("span", {class: "hint", text: "Styles that suit this kit. The Kit picks filter shows only these."})),
+      h("div", {class: "mlp-row"}, saveBtn, cancel, h("span", {class: "sp"}), del), E.status);
     R.editor.replaceChildren(form);
     R.editor.showModal();
     E.name.focus();
   }
-  function closeEditor() { if (R.editor.open) R.editor.close(); R.editor.replaceChildren(); S.editing = null; R.editKit.focus(); }
+  function closeEditor() { if (R.editor.open) R.editor.close(); R.editor.replaceChildren(); S.editing = null; R.newKit.focus(); }
 
   function kitFrom(E) {
     const colors = {}, fonts = {};
@@ -521,24 +526,31 @@
     } catch (e) { say(E.status, e.message, "err"); }
   }
 
-  /* ---------------------------------------------------------------- drawer (narrow screens) */
-  function drawer(open) {
-    R.root.classList.toggle("mlp-open", open);
-    R.drawerBtn.setAttribute("aria-expanded", String(open));
-    if (open) R.closeSide.focus(); else R.drawerBtn.focus({preventScroll: true});
-  }
-
   /* ---------------------------------------------------------------- mount */
+  function sec(label, ...kids) { return h("section", {class: "mlp-sec"}, h("h3", {class: "lbl", text: label}), ...kids); }
+
   function mount(el) {
     if (!el || el.dataset.mlpMounted) return;
     el.dataset.mlpMounted = "1";
     loadPrefs();
-    R = {parts: new Map()};
+    R = {};
     R.service = h("p", {class: "status warn mlp-service", role: "status", hidden: true});
+
+    /* brand kit */
     R.kits = h("div", {class: "chips mlp-kits", role: "group", "aria-label": "Brand kit"});
-    R.editKit = h("button", {type: "button", class: "ghost tiny", text: "Edit kit", on: {click: () => S.kit && openEditor(S.kit)}});
-    R.newKit = h("button", {type: "button", class: "ghost tiny", on: {click: () => openEditor(null)}}, icon("plus"), "New kit");
-    const typing = {input: () => redraw()};
+    R.editKit = h("button", {type: "button", class: "ghost", text: "Edit kit", on: {click: () => S.kit && openEditor(S.kit)}});
+    R.newKit = h("button", {type: "button", class: "ghost", on: {click: () => openEditor(null)}}, icon("plus"), "New kit");
+
+    /* style picker */
+    R.search = h("input", {type: "search", placeholder: "Search styles", "aria-label": "Search styles", autocomplete: "off",
+                           on: {input: () => { S.q = R.search.value; renderGallery(); }}});
+    R.count = h("span", {class: "mlp-count", "aria-live": "polite"});
+    R.channels = h("div", {class: "mlp-filter"});
+    R.kinds = h("div", {class: "mlp-filter"});
+    R.gallery = h("div", {class: "mlp-gallery", role: "group", "aria-label": "Styles", on: {keydown: galleryKeys}});
+
+    /* words */
+    const typing = {input: () => drawPreview()};
     R.headline = h("textarea", {maxLength: 300, rows: 2, placeholder: SAMPLE.headline, on: typing});
     R.kicker = h("input", {maxLength: 120, placeholder: SAMPLE.kicker, on: typing});
     R.body = h("textarea", {maxLength: 600, rows: 3, placeholder: SAMPLE.body, on: typing});
@@ -546,82 +558,69 @@
     R.handle = h("input", {maxLength: 80, on: typing});
     R.label = h("input", {maxLength: 60, placeholder: "e.g. Sponsored", on: typing});
     R.caption = h("textarea", {maxLength: 2200, rows: 3, placeholder: "The text that goes with the post"});
-    R.thumbs = h("div", {class: "mlp-thumbs", role: "group", "aria-label": "Picture"});
-    R.noPics = h("p", {class: "hint", text: "No pictures yet: make or upload one in Make, or use a text style.", hidden: true});
-    R.markChip = h("button", {type: "button", class: "chip", "aria-pressed": String(S.mark), text: "Logo or wordmark",
-      on: {click: () => { S.mark = !S.mark; R.markChip.setAttribute("aria-pressed", String(S.mark)); redraw(true); }}});
+
+    /* picture, look, file */
+    R.pics = h("div", {class: "mlp-pics", role: "group", "aria-label": "Picture"});
+    R.noPics = h("div");
+    R.look = h("div", {class: "mlp-looks"});
     R.typeChips = h("div", {class: "chips", role: "group", "aria-label": "File"});
     const drawType = () => R.typeChips.replaceChildren(...[["png", "PNG"], ["jpg", "JPEG"]].map(([v, t]) =>
       h("button", {type: "button", class: "chip", "aria-pressed": String(S.type === v), text: t, on: {click: () => { S.type = v; drawType(); }}})));
     drawType();
+
+    R.previewBtn = h("button", {type: "button", class: "ghost", on: {click: previewNow}}, icon("play"), "Preview");
+    R.save = h("button", {type: "button", on: {click: save}}, icon("save"), "Render and save");
     R.status = h("p", {class: "status", role: "status", "aria-live": "polite"});
-    R.closeSide = h("button", {type: "button", class: "ghost tiny mlp-close", text: "Close", "aria-label": "Close the controls",
-                               on: {click: () => drawer(false)}});
-    R.side = h("aside", {class: "mlp-side", id: "mlp-side", "aria-label": "Post controls"},
-      h("div", {class: "mlp-sidehead"}, h("h2", {class: "mlp-title", text: "Posts"}), R.closeSide),
-      h("p", {class: "hint mlp-sub", text: "Pick a kit, type your words, then open any style to render and save it."}),
+
+    R.edit = h("div", {class: "mlp-editor-col"},
+      h("div", {class: "mlp-head"}, h("h2", {class: "mlp-title", text: "Posts"}),
+        h("p", {class: "hint", text: "Pick a kit and a style, write your words, and watch the preview."})),
       R.service,
-      h("section", {class: "mlp-sec"}, h("span", {class: "lbl", text: "Brand kit"}), R.kits,
-        h("div", {class: "mlp-row mlp-kitbtns"}, R.editKit, R.newKit)),
-      h("section", {class: "mlp-sec"}, h("span", {class: "lbl", text: "Words"}),
+      sec("Brand kit", h("div", {class: "mlp-kitrow"}, R.kits, h("div", {class: "mlp-row"}, R.editKit, R.newKit))),
+      sec("Style",
+        h("div", {class: "mlp-searchrow"}, R.search, R.count),
+        R.channels, R.kinds, R.gallery),
+      sec("Words",
         field("Headline", R.headline), field("Small line above the headline", R.kicker), field("Body", R.body),
-        field("Extra detail (date, price…)", R.detail), field("@account or website", R.handle),
-        field("Tag above the small line (optional)", R.label)),
-      h("section", {class: "mlp-sec"}, h("span", {class: "lbl", text: "Picture (photo styles)"}), R.thumbs, R.noPics),
-      h("section", {class: "mlp-sec"}, h("span", {class: "lbl", text: "On the post"}), h("div", {class: "chips"}, R.markChip)),
-      h("section", {class: "mlp-sec"}, h("span", {class: "lbl", text: "When saving"}),
+        h("details", {class: "mlp-more"}, h("summary", {text: "More text: detail, handle, tag"}),
+          field("Extra detail (date, price…)", R.detail), field("@account or website", R.handle),
+          field("Tag above the small line (optional)", R.label))),
+      sec("Picture", h("p", {class: "hint mlp-subhint", text: "Photo styles use it; text styles leave it out."}), R.pics, R.noPics),
+      sec("Look", R.look),
+      sec("Caption and file",
         field("Caption", R.caption, "Not drawn on the picture; saved with the post."),
         h("span", {class: "label", text: "File"}), R.typeChips),
+      h("div", {class: "mlp-actions"}, R.previewBtn, R.save),
       R.status);
-    R.drawerBtn = h("button", {type: "button", class: "ghost mlp-drawerbtn", text: "Kit and words",
-                               "aria-controls": "mlp-side", "aria-expanded": "false", on: {click: () => drawer(true)}});
-    R.count = h("span", {class: "mlp-count"});
-    R.tools = h("div", {class: "mlp-tools"});
-    R.gallery = h("div", {class: "mlp-gallery"});
-    R.canvas = h("div", {class: "mlp-canvas"}, R.drawerBtn, R.tools, R.gallery);
-    R.scrim = h("div", {class: "mlp-scrim", on: {click: () => drawer(false)}});
-    R.root = h("div", {class: "mlp", on: {keydown: e => { if (e.key === "Escape" && R.root.classList.contains("mlp-open")) drawer(false); }}},
-      R.side, R.scrim, R.canvas);
 
-    /* the zoom dialog */
-    R.ztitle = h("h2", {class: "mlp-ztitle"});
-    R.ztags = h("p", {class: "hint mlp-ztags"});
-    R.zimg = h("img", {class: "mlp-zimg", alt: "The post, large", hidden: true});
-    R.zframe = h("div", {class: "mlp-zframe"}, R.zimg);
-    R.zprev = h("button", {type: "button", class: "ghost tiny", text: "‹", "aria-label": "Previous slide",
-                           on: {click: () => { S.slide--; renderSlide(styleOf(S.zoom)); drawZoom(); }}});
-    R.znext = h("button", {type: "button", class: "ghost tiny", text: "›", "aria-label": "Next slide",
-                           on: {click: () => { S.slide++; renderSlide(styleOf(S.zoom)); drawZoom(); }}});
-    R.zslide = h("span", {class: "hint"});
-    R.zslides = h("div", {class: "mlp-row"}, R.zprev, R.zslide, R.znext);
-    R.zsave = h("button", {type: "button", on: {click: save}}, icon("save"), "Render and save");
-    R.zstatus = h("p", {class: "status", role: "status", "aria-live": "polite"});
-    R.zresult = h("div", {class: "mlp-result", "aria-live": "polite"});
-    const zclose = h("button", {type: "button", class: "ghost", text: "Close", on: {click: () => R.zoom.close()}});
-    R.zoom = h("dialog", {class: "mlp-zoom", "aria-label": "Post, large"},
-      h("div", {class: "mlp-zbody"}, R.zframe,
-        h("div", {class: "mlp-zside"}, h("div", {}, R.ztitle, R.ztags), R.zslides,
-          h("div", {class: "mlp-row"}, R.zsave, zclose), R.zstatus, R.zresult)));
-    R.zoom.addEventListener("click", e => { if (e.target === R.zoom) R.zoom.close(); });
-    R.zoom.addEventListener("close", () => { zoomTok++; S.zoom = null; });
-    R.editor = h("dialog", {class: "mlp-editor", "aria-label": "Brand kit editor"});
+    /* the live preview */
+    R.ptitle = h("h3", {class: "mlp-ptitle", text: "Your post"});
+    R.ptags = h("p", {class: "hint mlp-ptags"});
+    R.pimg = h("img", {class: "mlp-pimg", alt: "", hidden: true});
+    R.pframe = h("div", {class: "mlp-pframe ar-45"});
+    R.sprev = h("button", {type: "button", class: "ghost", text: "‹", "aria-label": "Previous slide",
+                           on: {click: () => { S.slide--; drawPreview(true); }}});
+    R.snext = h("button", {type: "button", class: "ghost", text: "›", "aria-label": "Next slide",
+                           on: {click: () => { S.slide++; drawPreview(true); }}});
+    R.slide = h("span", {class: "hint"});
+    R.slides = h("div", {class: "mlp-row", hidden: true}, R.sprev, R.slide, R.snext);
+    R.pstatus = h("p", {class: "status", role: "status", "aria-live": "polite"});
+    R.result = h("div", {class: "mlp-result", "aria-live": "polite"});
+    R.preview = h("aside", {class: "mlp-preview", "aria-label": "Preview", tabindex: "-1"},
+      h("div", {class: "mlp-pcard"}, h("div", {class: "mlp-phead"}, R.ptitle, R.ptags), R.pframe, R.slides, R.pstatus, R.result));
+
+    R.more = h("div", {class: "mlp-after"});
+    R.root = h("div", {class: "mlp"}, h("div", {class: "mlp-compose"}, R.edit, R.preview), R.more);
+    R.editor = h("dialog", {class: "mlp-kitdialog", "aria-label": "Brand kit editor"});
     R.editor.addEventListener("close", () => { R.editor.replaceChildren(); S.editing = null; });
 
-    if ("IntersectionObserver" in window) {
-      T.io = new IntersectionObserver(entries => {
-        let more = false;
-        for (const e of entries) {
-          const id = e.target.dataset.style;
-          if (e.isIntersecting) { if (!T.seen.has(id)) { T.seen.add(id); want(id); more = true; } }
-          else T.seen.delete(id);
-        }
-        if (more) pump();
-      }, {rootMargin: "300px 0px"});
-    }
-    el.replaceChildren(R.root, R.zoom, R.editor);
-    /* the page may hang more panels under the gallery (the recipes) */
-    if (el.parentElement) for (const n of el.parentElement.querySelectorAll(":scope > [data-mlp-canvas]")) R.canvas.append(n);
-    renderTools();
+    el.replaceChildren(R.root, R.editor);
+    /* the page may hang more panels beside the composer (the recipes): they go under it */
+    if (el.parentElement) for (const n of el.parentElement.querySelectorAll(":scope > [data-mlp-canvas]")) R.more.append(n);
+    renderFilters();
+    renderLook();
+    renderGallery();
+    paint();
     loadAll().catch(e => say(R.status, e.message, "err"));
   }
 

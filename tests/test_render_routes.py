@@ -136,7 +136,7 @@ class StylesAndHealthTest(PostsCase):
         render_client._cache.clear()
         st, j, _, _ = self.req("GET", "/api/styles")
         self.assertEqual(st, 200)
-        self.assertEqual(j["styles"], [])
+        self.assertEqual(len(j["styles"]), 35)                        # listed from styles.json, drawn as swatches
         self.assertEqual(j["render"], {"ok": False, "missing": ["the render service is not reachable"]})
         st, j, _, _ = self.req("GET", "/api/posts/health")
         self.assertEqual((st, j["ok"], j["missing"]), (200, False, ["the render service is not reachable"]))
@@ -278,6 +278,46 @@ class RenderRouteTest(PostsCase):
         self.assertEqual(self.post(style="scrim", image=pic, preview=True, width=320)[3]["x-thumb-cache"], "miss")
         self.assertTrue(os.listdir(store.data_path("cache", "thumbs")))
 
+    def test_style_thumbnail_endpoint_is_cached_by_style_kit_format_palette(self):
+        q = "/api/posts/thumb?kit=paper-studio&style=editorial&format=4:5&palette=brand&v=x"
+        n = len(self.fake.calls)
+        st, _, body, h = self.req("GET", q)
+        self.assertEqual((st, h["content-type"], h["x-thumb-cache"]), (200, "image/png", "miss"))
+        self.assertEqual(body[:8], b"\x89PNG\r\n\x1a\n")
+        self.assertIn("max-age=86400", h["cache-control"])
+        call = self.fake.calls[-1]
+        self.assertEqual((call["width"], call["format"], call["palette"], call["images"]), (320, "4:5", "brand", []))
+        self.assertEqual(call["text"]["headline"], "Your headline goes here")       # sample words, never the user's
+        st, _, again, h = self.req("GET", q.replace("v=x", "v=y"))                    # v= is only for the browser
+        self.assertEqual((st, h["x-thumb-cache"], again, len(self.fake.calls)), (200, "hit", body, n + 1))
+        self.assertEqual(self.req("GET", q.replace("4:5", "9:16"))[3]["x-thumb-cache"], "miss")
+        self.assertEqual(self.req("GET", q.replace("brand", "own"))[3]["x-thumb-cache"], "miss")
+        self.assertEqual(self.req("GET", q.replace("editorial", "scrim"))[3]["x-thumb-cache"], "miss")
+        self.assertEqual(self.req("GET", q.replace("paper-studio", "market-day"))[3]["x-thumb-cache"], "miss")
+
+    def test_style_thumbnail_refusals_and_service_off(self):
+        base = "/api/posts/thumb?kit=paper-studio&style=editorial"
+        self.assertEqual(self.req("GET", base.replace("paper-studio", "nope"))[0], 404)
+        self.assertEqual(self.req("GET", base.replace("editorial", "<x>"))[0], 400)
+        self.assertEqual(self.req("GET", base + "&format=2:1")[0], 400)
+        self.assertEqual(self.req("GET", base + "&palette=neon")[0], 400)
+        self.assertEqual(self.fake.calls, [])
+        with mock.patch.dict(os.environ, {"MEDIA_LAB_RENDER_URL": "http://127.0.0.1:9"}):
+            render_client._cache.clear()
+            self.assertEqual(self.req("GET", base)[0], 503)
+
+    def test_styles_carry_their_own_colours_and_list_locally_when_the_service_is_off(self):
+        st, j, _, _ = self.req("GET", "/api/styles")
+        ed = next(s for s in j["styles"] if s["id"] == "editorial")
+        self.assertRegex(ed["own"]["bg"], r"^#[0-9a-f]{6}$")                         # from render/styles/styles.json
+        self.assertEqual(ed["version"], "e1")                                         # the service's fields win
+        with mock.patch.dict(os.environ, {"MEDIA_LAB_RENDER_URL": "http://127.0.0.1:9"}):
+            render_client._cache.clear()
+            st, j, _, _ = self.req("GET", "/api/styles")
+        self.assertFalse(j["render"]["ok"])
+        self.assertEqual(len(j["styles"]), 35)                                        # swatch cards still show
+        self.assertEqual(render_routes.local_styles("/nonexistent/styles.json"), [])
+
     def test_refusals(self):
         self.assertEqual(self.post(kit="nope")[0], 404)
         self.assertEqual(self.post(style="<x>")[0], 400)
@@ -345,39 +385,54 @@ class PostsBrowserTest(PostsCase):
         pg.add_script_tag(url="/static/posts.js")
         pg.evaluate("() => { const d = document.createElement('div'); d.id = 'pp'; document.body.prepend(d);"
                     " window.MediaLabPosts.mount(d); }")
-        # visual pass (2026-10-11): kit chips, a gallery of every style with thumbnails, a zoom dialog to save
+        # composer (2026-10-12): kit chips, a gallery of style cards (lazy <img> from /api/posts/thumb over a swatch),
+        # a live preview beside (or, on a phone, after) the fields, Preview scrolls to it, Render and save under it
         expect(pg.locator(".mlp-kits .chip")).to_have_count(3)
-        expect(pg.locator(".mlp-thumb")).to_have_count(2)              # "No picture" + pic.png
+        expect(pg.locator(".mlp-pic")).to_have_count(2)                # "No picture" + pic.png
         expect(pg.locator(".mlp-card")).to_have_count(2)                # one card per style
-        expect(pg.locator(".mlp-card .mlp-shot").first).to_have_attribute("src", re.compile(r"^blob:"))
-        thumb = next(c for c in self.fake.calls if c.get("width") == 320)
-        self.assertEqual(thumb["text"]["headline"], "Your headline goes here")   # sample words until you type
-        pg.get_by_role("button", name="Kit and words").click()          # the sidebar is a drawer on a phone
-        pg.locator(".mlp-thumb").nth(1).click()
+        expect(pg.locator(".mlp-card .mlp-swatch")).to_have_count(2)
+        expect(pg.locator(".mlp-card .mlp-shot").first).to_have_attribute("loading", "lazy")
+        expect(pg.locator(".mlp-card .mlp-shot").first).to_have_attribute("src", re.compile(r"^/api/posts/thumb\?kit="))
+        expect(pg.locator(".mlp-card[aria-pressed=true]")).to_have_count(1)
+        expect(pg.locator(".mlp-pimg")).to_have_attribute("src", re.compile(r"^blob:"))    # a live sample at once
+        live = [c for c in self.fake.calls if c.get("width") == 540][-1]
+        self.assertEqual(live["text"]["headline"], "Your headline goes here")              # sample words until you type
+        pg.locator('.mlp-card[data-style="editorial"]').focus()                            # arrows move between cards
+        pg.keyboard.press("ArrowRight")
+        self.assertEqual(pg.evaluate("document.activeElement.dataset.style"), "scrim")
+        pg.keyboard.press("Enter")
+        expect(pg.locator('.mlp-card[data-style="scrim"]')).to_have_attribute("aria-pressed", "true")
+        pg.get_by_label("Search styles").fill("zzz")
+        expect(pg.locator(".mlp-gallery")).to_contain_text("No styles match.")
+        pg.get_by_role("button", name="Clear filters").click()
+        expect(pg.locator(".mlp-card")).to_have_count(2)
+        pg.locator(".mlp-pic").nth(1).click()
         pg.get_by_label("Headline", exact=True).fill("Fresh today")
-        for _ in range(60):                                             # typing re-draws the visible cards
-            if any(c.get("width") == 320 and c["text"]["headline"] == "Fresh today" for c in self.fake.calls):
+        pg.get_by_role("button", name="Preview", exact=True).click()
+        for _ in range(60):
+            if any(c.get("width") == 540 and c["text"]["headline"] == "Fresh today" for c in self.fake.calls):
                 break
             pg.wait_for_timeout(50)
         else:
-            self.fail("the gallery did not re-draw after typing")
-        pg.get_by_role("button", name="Close the controls").click()
-        pg.locator('.mlp-card[data-style="scrim"] .mlp-frame').click()
-        expect(pg.locator(".mlp-zimg")).to_have_attribute("src", re.compile(r"^blob:"))
-        big = [c for c in self.fake.calls if c.get("width") == 1080][-1]
+            self.fail("the preview did not re-draw")
+        top = pg.evaluate("document.querySelector('.mlp-preview').getBoundingClientRect().top")
+        self.assertTrue(-1 <= top < 800, top)                          # Preview brought it into view (audit P1)
+        big = [c for c in self.fake.calls if c.get("width") == 540][-1]
         self.assertEqual((big["style"], big["text"]["headline"], len(big["images"])), ("scrim", "Fresh today", 1))
         pg.get_by_role("button", name="Render and save").click()
         expect(pg.locator(".mlp-result")).to_contain_text("Saved as post_")
         expect(pg.locator(".mlp-result")).to_contain_text("Commercial use OK.")
         expect(pg.locator(".mlp-result").get_by_role("link", name="Download")).to_be_visible()
         self.assertLessEqual(pg.evaluate("document.documentElement.scrollWidth"), 375)
-        pg.get_by_role("button", name="Close", exact=True).click()
-        pg.get_by_role("button", name="Kit and words").click()
         pg.get_by_role("button", name="New kit").click()
         pg.locator(".mlp-kitform").get_by_label("Name").fill("Phone Kit")
         pg.get_by_role("button", name="Create kit").click()
         expect(pg.locator(".mlp-kits .chip")).to_have_count(4)
         self.assertLessEqual(pg.evaluate("document.documentElement.scrollWidth"), 375)
+        pg.set_viewport_size({"width": 1280, "height": 800})          # wide: the preview sticks beside the editor
+        pg.evaluate("window.scrollTo(0, 900)")
+        top = pg.evaluate("document.querySelector('.mlp-preview').getBoundingClientRect().top")
+        self.assertAlmostEqual(top, 16, delta=1)
         self.assertEqual(problems, [])
 
 
@@ -404,7 +459,8 @@ class PostsPageTest(unittest.TestCase):
 
     def test_phone_width(self):
         self.assertIn("@media (max-width:760px)", self.CSS)
-        self.assertIn("@media (max-width:820px)", self.CSS)            # the sidebar becomes a drawer
+        self.assertIn("@media (max-width:900px)", self.CSS)            # one column: the preview after the fields
+        self.assertIn(".mlp-preview{position:sticky;top:16px", self.CSS)
         for w in re.findall(r"(?<![-\w])(?:width|min-width):\s*(\d+)px", self.CSS):
             self.assertLessEqual(int(w), 343, "a fixed width wider than a 375px screen minus gutters")
 

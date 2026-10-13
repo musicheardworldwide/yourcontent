@@ -18,7 +18,7 @@ from tests.test_ui import _NO_BROWSER
 from tests.util import TempRoots
 
 WIDTHS = (320, 390, 1024, 1180, 1440)
-VIEWS = ("posts", "make", "calendar", "connect")
+VIEWS = ("home", "posts", "make", "calendar", "library", "connect", "settings")
 SEEN = "try{localStorage.setItem('ml-notice-1','1');localStorage.setItem('ml-tour-1','1')}catch(e){}"
 
 
@@ -74,7 +74,8 @@ class NoSidewaysScrollTest(unittest.TestCase):
         pg = ctx.new_page()
         pg.goto(self.url + "/")
         pg.wait_for_selector("#notice[open]")
-        pg.click("#noticeok")                                   # "Make a post"
+        for _ in range(3):                                      # goal (Make posts), GPU, the notice
+            pg.click("#noticeok")
         pg.wait_for_selector("#notice:not([open])", state="attached")
         self.assertEqual(pg.evaluate("document.body.dataset.view"), "posts")
         pg.reload()

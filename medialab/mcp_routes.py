@@ -25,7 +25,7 @@ JOB_WAIT_MAX = 110  # seconds a job_status call may wait; MCP clients time out a
 INSTRUCTIONS = (
     "YourContent makes pictures, clips and music on the owner's GPU, styles posts with brand kits, edits photos and "
     "video, cuts reels and keeps a content calendar. Generation runs as jobs: submit, then call job_status with "
-    "wait_seconds until the job is done. Every file carries a licence label; check commercial_ok before suggesting "
+    "wait_seconds until the job is done. Every file carries a license label; check commercial_ok before suggesting "
     "commercial use. Nothing here posts to social networks: put finished work on the calendar as 'ready' and let "
     "the owner publish. Read /docs/AGENTS.md in the YourContent repository for the full guide.")
 
@@ -40,18 +40,20 @@ def _obj(props: dict, required: tuple = (), extra: bool = False) -> dict:
 REF = {"type": "object", "description": "a file reference as returned by list_media: {root, name}",
        "properties": {"root": {"type": "string"}, "name": {"type": "string"}}, "required": ["root", "name"]}
 S, I, N = {"type": "string"}, {"type": "integer"}, {"type": "number"}
-CAL_FIELDS = {"when": {"type": "string", "description": "YYYY-MM-DD (all day) or YYYY-MM-DDTHH:MM[+offset]"},
+CAL_FIELDS = {"when": {"type": ["string", "null"], "description": "YYYY-MM-DD (all day) or YYYY-MM-DDTHH:MM[+offset]; "
+                                                                "null leaves it unscheduled"},
               "duration_min": I, "channel": {"type": "string", "description": "e.g. instagram_reel"},
               "title": S, "caption": S,
               "status": {"enum": ["idea", "draft", "ready", "posted", "skipped"]},
-              "project": S, "asset": REF}
+              "project": S, "asset": REF,
+              "note": {"type": "string", "description": "why the status changed (kept in the entry's history; 500 chars)"}}
 
 # name, description, input schema, method, path template ({key} taken from the arguments), body keys
 # (None = every remaining argument), read-only hint.
 TOOLS: list[tuple] = [
     ("app_status", "Which features work right now (models present, ComfyUI up) and why not.",
      _obj({}), "GET", "/api/health", (), True),
-    ("list_media", "Recent pictures, clips, music and exports, newest first, with licence labels.",
+    ("list_media", "Recent pictures, clips, music and exports, newest first, with license labels.",
      _obj({}), "GET", "/api/recent", (), True),
     ("generate_picture", "Start a picture job from a prompt. The default model, Qwen-Image-2512, is text-to-image "
      "and commercial OK; reference pictures (up to 6) need variant \"bf16\" (Qwen-Image 2.1, non-commercial).",
@@ -77,17 +79,18 @@ TOOLS: list[tuple] = [
      "POST", "/api/projects/{id}", ("rev", "project"), False),
     ("export_project", "Start the final MP4 export of a cut.", _obj({"id": S, "rev": I}, ("id", "rev")),
      "POST", "/api/projects/{id}/export", ("rev",), False),
-    ("calendar_list", "Content calendar entries between two dates (YYYY-MM-DD).", _obj({"from": S, "to": S}),
+    ("calendar_list", "Content calendar entries between two dates (YYYY-MM-DD), or the unscheduled ones with "
+     "unscheduled='1'.", _obj({"from": S, "to": S, "unscheduled": S}),
      "GET", "/api/calendar", (), True),
     ("calendar_add", "Add a calendar entry. Put finished work on it with status 'ready' and the file as asset.",
-     _obj(CAL_FIELDS, ("when", "title")), "POST", "/api/calendar", None, False),
+     _obj(CAL_FIELDS, ("title",)), "POST", "/api/calendar", None, False),
     ("calendar_update", "Change a calendar entry: send its rev and only the fields that change.",
      _obj({"id": S, "rev": I, **CAL_FIELDS}, ("id", "rev")), "POST", "/api/calendar/{id}", None, False),
     ("list_styles", "Post styles available for render_post.", _obj({}), "GET", "/api/styles", (), True),
-    ("list_brandkits", "The owner's brand kits (colours, fonts, logo, voice).", _obj({}),
+    ("list_brandkits", "The owner's brand kits (colors, fonts, logo, voice).", _obj({}),
      "GET", "/api/brandkits", (), True),
     ("render_post", "Render a styled post image from a brand kit, a style (list_styles), text and optional "
-     "pictures. Saved to the library with a licence label; the file is item.ref in the reply.",
+     "pictures. Saved to the library with a license label; the file is item.ref in the reply.",
      _obj({"kit": S, "style": S, "format": {"enum": ["4:5", "1:1", "9:16", "1.91:1"]}, "type": {"enum": ["png", "jpg"]},
            "image": REF, "images": {"type": "array", "items": REF},
            "text": _obj({"headline": S, "kicker": S, "body": S, "detail": S, "handle": S, "label": S}, ("headline",)),

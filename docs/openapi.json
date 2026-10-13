@@ -192,7 +192,7 @@
   "/api/brandkits": {
    "get": {
     "operationId": "get_api_brandkits",
-    "summary": "The owner's brand kits (colours, fonts, logo, voice).",
+    "summary": "The owner's brand kits (colors, fonts, logo, voice).",
     "responses": {
      "200": {
       "description": "JSON"
@@ -204,7 +204,7 @@
    },
    "post": {
     "operationId": "post_api_brandkits",
-    "summary": "Make a brand kit (name, colours, fonts, logo ref, handle, voice, default styles).",
+    "summary": "Make a brand kit (name, colors, fonts, logo ref, handle, voice, default styles).",
     "responses": {
      "200": {
       "description": "JSON"
@@ -325,7 +325,7 @@
   "/api/calendar": {
    "get": {
     "operationId": "get_api_calendar",
-    "summary": "Content calendar entries between two dates (YYYY-MM-DD).",
+    "summary": "Content calendar entries between two dates (YYYY-MM-DD), or the unscheduled ones with unscheduled='1'.",
     "responses": {
      "200": {
       "description": "JSON"
@@ -365,8 +365,11 @@
         "type": "object",
         "properties": {
          "when": {
-          "type": "string",
-          "description": "YYYY-MM-DD (all day) or YYYY-MM-DDTHH:MM[+offset]"
+          "type": [
+           "string",
+           "null"
+          ],
+          "description": "YYYY-MM-DD (all day) or YYYY-MM-DDTHH:MM[+offset]; null leaves it unscheduled"
          },
          "duration_min": {
           "type": "integer"
@@ -408,11 +411,14 @@
            "root",
            "name"
           ]
+         },
+         "note": {
+          "type": "string",
+          "description": "why the status changed (kept in the entry's history; 500 chars)"
          }
         },
         "additionalProperties": false,
         "required": [
-         "when",
          "title"
         ]
        }
@@ -553,8 +559,11 @@
           "type": "integer"
          },
          "when": {
-          "type": "string",
-          "description": "YYYY-MM-DD (all day) or YYYY-MM-DDTHH:MM[+offset]"
+          "type": [
+           "string",
+           "null"
+          ],
+          "description": "YYYY-MM-DD (all day) or YYYY-MM-DDTHH:MM[+offset]; null leaves it unscheduled"
          },
          "duration_min": {
           "type": "integer"
@@ -596,6 +605,10 @@
            "root",
            "name"
           ]
+         },
+         "note": {
+          "type": "string",
+          "description": "why the status changed (kept in the entry's history; 500 chars)"
          }
         },
         "additionalProperties": false,
@@ -655,7 +668,7 @@
   "/api/config": {
    "get": {
     "operationId": "get_api_config",
-    "summary": "Limits, presets, model choices and licence rows for the page, and how the app is reached: listens (address), loopback_only, token_required (no credential needed).",
+    "summary": "Limits, presets, model choices and license rows for the page, and how the app is reached: listens (address), loopback_only, token_required (no credential needed).",
     "responses": {
      "200": {
       "description": "JSON"
@@ -1286,7 +1299,7 @@
   "/api/info/{p1}/{p2}": {
    "get": {
     "operationId": "get_api_info_p1_p2",
-    "summary": "One file's details and licence record (root, name).",
+    "summary": "One file's details and license record (root, name).",
     "responses": {
      "200": {
       "description": "JSON"
@@ -1553,7 +1566,7 @@
   "/api/posts/render": {
    "post": {
     "operationId": "post_api_posts_render",
-    "summary": "Render a styled post image from a brand kit, a style (list_styles), text and optional pictures. Saved to the library with a licence label; the file is item.ref in the reply.",
+    "summary": "Render a styled post image from a brand kit, a style (list_styles), text and optional pictures. Saved to the library with a license label; the file is item.ref in the reply.",
     "responses": {
      "200": {
       "description": "JSON"
@@ -1674,6 +1687,20 @@
         ]
        }
       }
+     }
+    }
+   }
+  },
+  "/api/posts/thumb": {
+   "get": {
+    "operationId": "get_api_posts_thumb",
+    "summary": "A style card: the style drawn small in a kit with sample words (PNG, cached).",
+    "responses": {
+     "200": {
+      "description": "JSON"
+     },
+     "4XX": {
+      "description": "{\"error\": message}"
      }
     }
    }
@@ -1958,7 +1985,7 @@
   "/api/recent": {
    "get": {
     "operationId": "get_api_recent",
-    "summary": "Recent pictures, clips, music and exports, newest first, with licence labels.",
+    "summary": "Recent pictures, clips, music and exports, newest first, with license labels.",
     "responses": {
      "200": {
       "description": "JSON"

@@ -165,7 +165,7 @@ details[open]>summary{margin-bottom:6px}
 .warn{font-size:13px;color:var(--warn);overflow-wrap:anywhere}
 
 /* dialogs */
-dialog{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:var(--r-panel);padding:18px;width:min(560px,calc(100vw - 32px));max-height:calc(100vh - 48px);overflow:auto;box-shadow:var(--shadow-lift)}
+dialog{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:var(--r-dialog);padding:18px;width:min(560px,calc(100vw - 32px));max-height:calc(100vh - 48px);overflow:auto;box-shadow:var(--shadow-lift)}
 dialog::backdrop{background:var(--scrim)}
 dialog h2{margin-bottom:10px;font-size:18px}
 dialog p{font-size:14px}

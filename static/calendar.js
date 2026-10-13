@@ -1,15 +1,21 @@
 "use strict";
-/* Content calendar (studio merge): month and week views of planned posts. Vanilla JS, no build step, strict CSP
-   (no inline handlers or styles: every look is a class in calendar.css). Talks to /api/calendar*, and reads
-   /api/projects and /api/recent for the link pickers. Every POST carries X-Media-Lab: 1, as in app.js.
+/* Content calendar (studio merge): a planner in the Buffer / Later mould. A drafts rail of unscheduled posts
+   (grouped Idea, Draft, Ready) beside a month or week grid; drag a draft onto a day to schedule it, or use its
+   "Schedule" button (keyboard and touch). Status filter chips; every post shows its status as a dot and a word.
+   Changing a status can carry a note, and each post keeps a history (who, when, note) shown in its editor.
+   Vanilla JS, no build step, strict CSP (no inline handlers or styles: every look is a class in calendar.css).
+   Talks to /api/calendar*, and reads /api/projects and /api/recent for the link pickers. Every POST carries
+   X-Media-Lab: 1, as in app.js.
 
    window.MediaLabCalendar.mount(el) renders into el and returns {reload, add}; add({asset, title, caption}) opens
    a new draft with that file attached. A button with
    data-calendar-toggle="<host id>" opens and closes that host (mounting it on first open), so the page needs no
    change to app.js. Keyboard: Tab reaches every day and entry; arrow keys move between days; Alt + arrow keys move
-   the focused entry a day (left/right) or a week (up/down); Enter opens it. */
+   the focused entry a day (left/right) or a week (up/down); Enter opens it. View and filter are remembered. */
 (function () {
   const STATUSES = ["idea", "draft", "ready", "posted", "skipped"];
+  const RAIL = ["idea", "draft", "ready"];          // the rail's groups; posted/skipped show only when present
+  const SHORT = {idea: "Idea", draft: "Draft", ready: "Ready", posted: "Posted", skipped: "Skip"};
   const CHANNELS = ["instagram_post", "instagram_reel", "instagram_story", "tiktok", "youtube_short", "x_post",
     "blog", "newsletter"];
   const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -19,7 +25,7 @@
   const IMAGE = /\.(png|jpe?g|webp)$/i;
   const narrow = () => !!(window.matchMedia && window.matchMedia("(max-width: 799px)").matches);
   const coarse = () => !!(window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
-  const MAXCAP = 2200;
+  const MAXCAP = 2200, MAXNOTE = 500;
   let seq = 0;
 
   /* ---------------------------------------------------------------- small helpers (same shape as app.js) */
@@ -39,16 +45,18 @@
     for (const c of kids.flat()) if (c != null && c !== false) el.append(c.nodeType ? c : String(c));
     return el;
   }
-  /* an icon from the sprite (icons.svg), always placed beside a text label */
-  function icon(name) {
+  /* an icon from the sprite (icons.svg), always placed beside a text label or inside a labelled button */
+  function icon(name, extra) {
     const NS = "http://www.w3.org/2000/svg", svg = document.createElementNS(NS, "svg"), use = document.createElementNS(NS, "use");
-    svg.setAttribute("class", "ic"); svg.setAttribute("aria-hidden", "true");
+    svg.setAttribute("class", "ic" + (extra ? " " + extra : "")); svg.setAttribute("aria-hidden", "true");
     use.setAttribute("href", "/static/icons.svg#" + name);
     svg.append(use);
     return svg;
   }
   function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
   function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* private window */ } }
+  const label = s => s ? s[0].toUpperCase() + s.slice(1) : "";
+  const dot = () => h("span", {class: "cal-dot", "aria-hidden": "true"});
 
   async function api(method, path, body) {
     const opt = {method, headers: {}};
@@ -85,42 +93,73 @@
     return m ? {day, time: m[1], tail: (m[2] || "") + (m[3] || "")} : {day, time: "", tail: ""};
   }
   function joinWhen(day, time, tail) { return time ? day + "T" + time + (tail || "") : day; }
+  function stamp(iso) {
+    const d = new Date(iso);
+    if (isNaN(d)) return String(iso || "");
+    return d.getDate() + " " + MONTHS[d.getMonth()].slice(0, 3) + " " + d.getFullYear() + ", " +
+      pad(d.getHours()) + ":" + pad(d.getMinutes());
+  }
 
   /* ---------------------------------------------------------------- one mounted calendar */
 
   function create(host) {
     const n = ++seq, id = s => "cal" + n + "-" + s;
+    const savedView = lsGet("ml-cal-view"), savedFilter = lsGet("ml-cal-filter");
     const C = {
-      view: ["month", "week"].includes(lsGet("ml-cal-view")) ? lsGet("ml-cal-view") : (narrow() ? "week" : "month"), cursor: new Date(), focus: ymd(new Date()),
-      entries: [], byId: new Map(), loading: 0, editing: null, projects: [], recent: [], asset: null, opener: null,
+      view: ["month", "week"].includes(savedView) ? savedView : (narrow() ? "week" : "month"),
+      filter: STATUSES.includes(savedFilter) ? savedFilter : "all",
+      cursor: new Date(), focus: ymd(new Date()), all: new Map(), loading: 0, editing: null, projects: [], recent: [],
+      asset: null, opener: null, dragId: null, railOpen: false, scheduling: null,
     };
+    const shown = e => C.filter === "all" || e.status === C.filter;
 
     /* toolbar */
     const prev = h("button", {class: "ghost cal-nav", type: "button", text: "‹"});
     const next = h("button", {class: "ghost cal-nav", type: "button", text: "›"});
     const today = h("button", {class: "ghost", type: "button", text: "Today"});
     const title = h("h2", {class: "cal-title", id: id("title"), "aria-live": "polite"});
-    const vMonth = h("button", {class: "chip", type: "button", text: "Month", data: {view: "month"}});
-    const vWeek = h("button", {class: "chip", type: "button", text: "Week", data: {view: "week"}});
+    const vMonth = h("button", {class: "cal-seg", type: "button", text: "Month", data: {view: "month"}});
+    const vWeek = h("button", {class: "cal-seg", type: "button", text: "Week", data: {view: "week"}});
+    const railCount = h("span", {class: "cal-count"});
+    const railBtn = h("button", {class: "ghost cal-railbtn", type: "button", "aria-controls": id("rail"),
+      "aria-expanded": "false"}, icon("layers"), "Drafts", railCount);
     const ics = h("a", {class: "btn ghost", href: "/api/calendar.ics", download: "yourcontent-calendar.ics",
-      title: "Download the calendar (.ics) for a calendar app"}, icon("download"), "Download .ics");
+      title: "Download the calendar (.ics) for a calendar app"}, icon("download"), h("span", {class: "cal-lbl", text: "Download .ics"}));
     const sub = h("button", {class: "ghost", type: "button", text: "Subscribe",
       title: "Copy a private link that Google, Apple or Outlook Calendar can subscribe to"});
-    const add = h("button", {type: "button"}, icon("plus"), "New post");
+    const add = h("button", {class: "cal-add", type: "button"}, icon("plus"), "New post");
     const status = h("div", {class: "status", role: "status"});
+
+    /* status filter chips */
+    const chips = ["all"].concat(STATUSES).map(s => h("button", {class: "chip cal-fchip" + (s === "all" ? "" : " st-" + s),
+      type: "button", data: {filter: s}}, s === "all" ? null : dot(), s === "all" ? "All" : label(s)));
+    const filters = h("div", {class: "cal-filters", role: "group", "aria-label": "Show posts by status"}, chips);
+
+    /* the rail (a side column on wide screens, a sheet on phones) */
+    const railList = h("div", {class: "cal-railbody"});
+    const railClose = h("button", {class: "ghost cal-railx", type: "button", text: "Close"});
+    const railNew = h("button", {class: "ghost tiny cal-railnew", type: "button"}, icon("plus"), "New idea");
+    const rail = h("aside", {class: "cal-rail", id: id("rail"), "aria-labelledby": id("railtitle")},
+      h("div", {class: "cal-railhead"}, h("h3", {id: id("railtitle"), text: "Unscheduled"}), h("span", {class: "sp"}),
+        railNew, railClose),
+      h("p", {class: "hint cal-railhint", text: coarse() ? "Use Schedule to give a draft a day."
+        : "Drag a draft onto a day, or use Schedule. Drop a post here to unschedule it."}),
+      railList);
+    const scrim = h("div", {class: "cal-scrim", hidden: true});
+
     const heads = h("div", {class: "cal-heads", "aria-hidden": "true"},
       WEEKDAYS.map(d => h("span", {text: d.slice(0, 3)})));
     const days = h("ol", {class: "cal-days", "aria-labelledby": id("title")});
+    const empty = h("div", {class: "cal-empty", hidden: true});
     const hint = h("p", {class: "hint cal-hint", text: coarse()
-      ? "Tap a day to add a post. Hold a post and drag it to another day to move it."
+      ? "Tap a day to add a post. Tap a post to edit or move it."
       : "Click a day to add a post. Drag a post to another day, or focus it and press Alt + arrow keys. Arrow keys " +
         "move between days."});
-    const legend = h("ul", {class: "cal-legend", "aria-label": "Status colours"},
-      STATUSES.map(s => h("li", {class: "st-" + s}, h("span", {class: "cal-dot", "aria-hidden": "true"}), s[0].toUpperCase() + s.slice(1))));
+    const main = h("div", {class: "cal-main"}, empty, h("div", {class: "cal-grid"}, heads, days), h("div", {class: "cal-foot"}, hint));
     const root = h("div", {class: "cal"},
-      h("div", {class: "cal-bar"}, prev, today, next, title, h("span", {class: "sp"}),
+      h("div", {class: "cal-bar"}, railBtn, h("div", {class: "cal-navs"}, prev, today, next), title, h("span", {class: "sp"}),
         h("div", {class: "cal-views", role: "group", "aria-label": "View"}, vMonth, vWeek), ics, sub, add),
-      status, h("div", {class: "cal-grid"}, heads, days), h("div", {class: "cal-foot"}, legend, hint));
+      filters, status, h("div", {class: "cal-body"}, rail, main), scrim);
     host.replaceChildren(root);
 
     sub.addEventListener("click", async () => {
@@ -150,41 +189,41 @@
       const [a, b] = range();
       const tok = ++C.loading;
       try {
-        const j = await api("GET", "/api/calendar?from=" + ymd(a) + "&to=" + ymd(b));
+        const [j, u] = await Promise.all([api("GET", "/api/calendar?from=" + ymd(a) + "&to=" + ymd(b)),
+          api("GET", "/api/calendar?unscheduled=1")]);
         if (tok !== C.loading) return;
-        C.entries = j.entries || [];
-        C.byId = new Map(C.entries.map(e => [e.id, e]));
+        C.all = new Map();
+        for (const e of (j.entries || []).concat(u.entries || [])) C.all.set(e.id, e);
         render();
         if (status.classList.contains("err")) say("");
       } catch (e) { if (tok === C.loading) say(e.message, "err"); }
     }
 
-    function put(e) {
-      const i = C.entries.findIndex(x => x.id === e.id);
-      if (i >= 0) C.entries[i] = e; else C.entries.push(e);
-      C.entries.sort((x, y) => (x.when + x.id < y.when + y.id ? -1 : 1));
-      C.byId.set(e.id, e);
-    }
-    function drop(eid) { C.entries = C.entries.filter(x => x.id !== eid); C.byId.delete(eid); }
+    const put = e => { C.all.set(e.id, e); };
+    const drop = eid => { C.all.delete(eid); };
+    const byTime = (x, y) => (x.when + x.id < y.when + y.id ? -1 : 1);
+    const scheduled = () => [...C.all.values()].filter(e => e.when).sort(byTime);
+    const unscheduled = () => [...C.all.values()].filter(e => !e.when);
 
     /* ------------------------------------------------ grid */
 
     function chip(e) {
       const w = splitWhen(e.when);
-      const label = [e.title, e.channel, w.time || "all day", e.status].filter(Boolean).join(", ");
+      const lab = [e.title, e.channel, w.time || "all day", label(e.status)].filter(Boolean).join(", ");
       return h("li", {class: "cal-item"},
         h("button", {class: "cal-entry st-" + e.status, type: "button", draggable: "true", data: {id: e.id, fk: "e" + e.id},
-          title: label, "aria-label": label + ". Open to edit"},
+          title: lab, "aria-label": lab + ". Open to edit"},
           e.asset && IMAGE.test(e.asset.name) ? h("img", {class: "cal-pic", alt: "", loading: "lazy", draggable: "false",
             src: "/m/" + encodeURIComponent(e.asset.root) + "/" + encodeURIComponent(e.asset.name)}) : null,
-          h("span", {class: "cal-dot", "aria-hidden": "true"}),
+          dot(),
           w.time ? h("span", {class: "cal-time", text: w.time}) : null,
           e.channel ? h("span", {class: "cal-chan", text: e.channel}) : null,
           h("span", {class: "cal-ttl", text: e.title}),
-          h("span", {class: "cal-stw", text: e.status})));
+          h("span", {class: "cal-stw", text: label(e.status)}),
+          h("span", {class: "cal-sta", text: SHORT[e.status] || label(e.status)})));
     }
 
-    function render() {
+    function renderGrid() {
       const [a, b] = range();
       const now = ymd(new Date()), month = C.cursor.getMonth();
       title.textContent = C.view === "month" ? MONTHS[month] + " " + C.cursor.getFullYear()
@@ -198,8 +237,13 @@
       root.classList.toggle("cal-week", C.view === "week");
       root.classList.toggle("cal-month", C.view === "month");
       const byDay = new Map();
-      for (const e of C.entries) {
+      let inView = 0, hiddenByFilter = 0;
+      const lo = ymd(C.view === "month" ? new Date(C.cursor.getFullYear(), month, 1) : a);
+      const hi = ymd(C.view === "month" ? new Date(C.cursor.getFullYear(), month + 1, 0) : b);
+      for (const e of scheduled()) {
         const d = splitWhen(e.when).day;
+        if (d >= lo && d <= hi) { if (shown(e)) inView++; else hiddenByFilter++; }
+        if (!shown(e)) continue;
         if (!byDay.has(d)) byDay.set(d, []);
         byDay.get(d).push(e);
       }
@@ -222,11 +266,106 @@
         const first = days.querySelector(".cal-daybtn");
         if (first) first.tabIndex = 0;
       }
+      // empty state: one line, one action
+      if (!inView) {
+        const span = C.view === "month" ? "this month" : "this week";
+        if (hiddenByFilter) {
+          empty.replaceChildren(h("p", {text: "No " + label(C.filter) + " posts " + span + "."}),
+            h("button", {class: "ghost", type: "button", text: "Show all", on: {click: () => setFilter("all")}}));
+        } else {
+          empty.replaceChildren(h("p", {text: "Nothing planned " + span + "."}),
+            h("button", {class: "ghost", type: "button", on: {click: ev => openEditor(null, C.focus, ev.currentTarget)}},
+              icon("plus"), "Plan a post"));
+        }
+      }
+      empty.hidden = !!inView;
       if (had) {
         const back = [...root.querySelectorAll("[data-fk]")].find(x => x.dataset.fk === had);
         if (back) back.focus({preventScroll: true});
       }
     }
+
+    /* ------------------------------------------------ rail */
+
+    function card(e) {
+      const lab = [e.title, e.channel, label(e.status)].filter(Boolean).join(", ");
+      return h("li", {class: "cal-card st-" + e.status, draggable: "true", data: {id: e.id}},
+        h("button", {class: "cal-cardmain", type: "button", data: {id: e.id, fk: "r" + e.id, act: "open"},
+          "aria-label": lab + ". Open to edit"},
+          h("span", {class: "cal-cardst"}, dot(), label(e.status)),
+          h("span", {class: "cal-ttl", text: e.title}),
+          e.channel ? h("span", {class: "cal-chan", text: e.channel}) : null),
+        h("button", {class: "ghost cal-sched", type: "button", data: {id: e.id, fk: "s" + e.id, act: "schedule"},
+          "aria-label": "Schedule “" + e.title + "”"}, icon("calendar"), "Schedule"));
+    }
+
+    function renderRail() {
+      const list = unscheduled().sort((x, y) => (String(x.created) + x.id < String(y.created) + y.id ? -1 : 1));
+      railCount.textContent = String(list.length);
+      railBtn.setAttribute("aria-label", "Drafts, " + list.length + " unscheduled");
+      const groups = (C.filter === "all" ? STATUSES : [C.filter])
+        .filter(s => RAIL.includes(s) || list.some(e => e.status === s));
+      const kids = [];
+      let any = 0;
+      for (const s of groups) {
+        const items = list.filter(e => e.status === s);
+        if (!items.length) continue;
+        any += items.length;
+        kids.push(h("section", {class: "cal-group st-" + s, "aria-label": label(s)},
+          h("h4", null, dot(), label(s), h("span", {class: "cal-gcount", text: String(items.length)})),
+          h("ul", {class: "cal-cards"}, items.map(card))));
+      }
+      if (!any) {
+        kids.push(C.filter !== "all" && list.length
+          ? h("div", {class: "cal-railempty"}, h("p", {text: "No unscheduled " + label(C.filter) + " posts."}),
+            h("button", {class: "ghost", type: "button", text: "Show all", on: {click: () => setFilter("all")}}))
+          : h("div", {class: "cal-railempty"}, h("p", {text: "Nothing waiting for a date."}),
+            h("button", {class: "ghost", type: "button", on: {click: ev => newIdea(ev.currentTarget)}}, icon("plus"), "New idea")));
+      }
+      const had = document.activeElement && rail.contains(document.activeElement) ? document.activeElement.dataset.fk : null;
+      railList.replaceChildren(...kids);
+      if (had) {
+        const back = [...rail.querySelectorAll("[data-fk]")].find(x => x.dataset.fk === had);
+        if (back) back.focus({preventScroll: true});
+      }
+    }
+
+    function render() {
+      for (const b of chips) b.setAttribute("aria-pressed", String(b.dataset.filter === C.filter));
+      renderGrid();
+      renderRail();
+    }
+
+    function setFilter(s) { C.filter = s; lsSet("ml-cal-filter", s); render(); }
+    for (const b of chips) b.addEventListener("click", () => setFilter(b.dataset.filter));
+
+    function showRail(open) {
+      C.railOpen = open;
+      root.classList.toggle("cal-railopen", open);
+      railBtn.setAttribute("aria-expanded", String(open));
+      scrim.hidden = !open;
+      if (open) {
+        const t = rail.querySelector(".cal-cardmain, .cal-railempty button") || railClose;
+        t.focus({preventScroll: true});
+      } else if (narrow()) railBtn.focus({preventScroll: true});
+    }
+    railBtn.addEventListener("click", () => showRail(!C.railOpen));
+    railClose.addEventListener("click", () => showRail(false));
+    scrim.addEventListener("click", () => showRail(false));
+    rail.addEventListener("keydown", e => { if (e.key === "Escape" && C.railOpen) { e.preventDefault(); showRail(false); } });
+    railNew.addEventListener("click", () => newIdea(railNew));
+    function newIdea(opener) { openEditor(null, null, opener); f.unsched.checked = true; syncUnsched(); }
+
+    rail.addEventListener("click", e => {
+      const b = e.target.closest("[data-act]");
+      if (!b) return;
+      const x = C.all.get(b.dataset.id);
+      if (!x) return;
+      if (b.dataset.act === "open") openEditor(x, null, b);
+      else openSchedule(x, b);
+    });
+
+    /* ------------------------------------------------ navigation */
 
     function go(delta) {
       if (C.view === "month") C.cursor = new Date(C.cursor.getFullYear(), C.cursor.getMonth() + delta, 1);
@@ -258,11 +397,11 @@
 
     days.addEventListener("click", e => {
       const ent = e.target.closest(".cal-entry");
-      if (ent) { const x = C.byId.get(ent.dataset.id); if (x) openEditor(x, null, ent); return; }
+      if (ent) { const x = C.all.get(ent.dataset.id); if (x) openEditor(x, null, ent); return; }
       const cell = e.target.closest(".cal-day");
       if (!cell || e.target.closest(".cal-list .cal-item")) return;
       C.focus = cell.dataset.day;
-      // a phone's month shows posts as dots: a day that has some opens its week, where they can be tapped
+      // a phone's month shows posts in short: a day that has some opens its week, where they can be tapped
       if (C.view === "month" && narrow() && cell.querySelector(".cal-entry")) { C.view = "week"; C.cursor = parseDay(C.focus); load(); return; }
       openEditor(null, cell.dataset.day, cell.querySelector(".cal-daybtn"));
     });
@@ -273,7 +412,7 @@
       const ent = e.target.closest(".cal-entry");
       if (ent && e.altKey) {
         e.preventDefault();
-        const x = C.byId.get(ent.dataset.id);
+        const x = C.all.get(ent.dataset.id);
         if (x) moveTo(x, ymd(addDays(parseDay(splitWhen(x.when).day), step)));
         return;
       }
@@ -281,22 +420,30 @@
       if (btn && !e.altKey) { e.preventDefault(); focusDay(ymd(addDays(parseDay(btn.dataset.day), step))); }
     });
 
-    /* drag an entry to another day */
-    days.addEventListener("dragstart", e => {
-      const ent = e.target.closest && e.target.closest(".cal-entry");
-      if (!ent) return;
-      e.dataTransfer.setData(DRAG, ent.dataset.id);
-      e.dataTransfer.setData("text/plain", ent.textContent);
+    /* ------------------------------------------------ drag: grid <-> grid, rail -> grid, grid -> rail */
+
+    root.addEventListener("dragstart", e => {
+      const src = e.target.closest && e.target.closest(".cal-entry, .cal-card");
+      if (!src) return;
+      C.dragId = src.dataset.id;
+      e.dataTransfer.setData(DRAG, src.dataset.id);
+      e.dataTransfer.setData("text/plain", (C.all.get(src.dataset.id) || {}).title || "");
       e.dataTransfer.effectAllowed = "move";
-      ent.classList.add("dragging");
+      src.classList.add("dragging");
+      root.classList.add("cal-dragging");
     });
-    days.addEventListener("dragend", e => {
-      if (e.target.classList) e.target.classList.remove("dragging");
-      for (const c of days.querySelectorAll(".cal-day.over")) c.classList.remove("over");
-    });
+    /* the dragged element is often re-rendered away before dragend fires, so a drop ends the drag too */
+    function endDrag() {
+      C.dragId = null;
+      root.classList.remove("cal-dragging");
+      for (const c of root.querySelectorAll(".over, .dragging")) c.classList.remove("over", "dragging");
+    }
+    root.addEventListener("dragend", endDrag);
+    root.addEventListener("drop", endDrag);
+    const ours = e => [...e.dataTransfer.types].includes(DRAG);
     days.addEventListener("dragover", e => {
       const cell = e.target.closest && e.target.closest(".cal-day");
-      if (!cell || ![...e.dataTransfer.types].includes(DRAG)) return;
+      if (!cell || !ours(e)) return;
       e.preventDefault();
       e.dataTransfer.dropEffect = "move";
       for (const c of days.querySelectorAll(".cal-day.over")) if (c !== cell) c.classList.remove("over");
@@ -311,21 +458,39 @@
       if (!cell) return;
       e.preventDefault();
       cell.classList.remove("over");
-      const x = C.byId.get(e.dataTransfer.getData(DRAG));
+      const x = C.all.get(e.dataTransfer.getData(DRAG));
       if (x) moveTo(x, cell.dataset.day);
     });
+    rail.addEventListener("dragover", e => {
+      const x = C.dragId && C.all.get(C.dragId);
+      if (!ours(e) || !x || !x.when) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      rail.classList.add("over");
+    });
+    rail.addEventListener("dragleave", e => { if (!rail.contains(e.relatedTarget)) rail.classList.remove("over"); });
+    rail.addEventListener("drop", e => {
+      rail.classList.remove("over");
+      const x = C.all.get(e.dataTransfer.getData(DRAG));
+      if (!x || !x.when) return;
+      e.preventDefault();
+      moveTo(x, null);
+    });
 
-    async function moveTo(x, day) {
+    /* day null = back to the rail; time (optional) replaces the entry's time */
+    async function moveTo(x, day, time) {
       const w = splitWhen(x.when);
-      if (w.day === day) return;
-      const when = joinWhen(day, w.time, w.tail), old = x;
+      const t = time === undefined ? w.time : time;
+      const when = day ? joinWhen(day, t, t === w.time ? w.tail : "") : null;
+      if (when === (x.when || null)) return;
+      const old = x;
       put(Object.assign({}, x, {when}));
-      C.focus = day;
+      if (day) C.focus = day;
       render();
-      say("Moving “" + x.title + "”…");
+      say((day ? "Scheduling “" : "Unscheduling “") + x.title + "”…");
       try {
         put(await api("POST", "/api/calendar/" + encodeURIComponent(x.id), {rev: x.rev, when}));
-        say("Moved “" + x.title + "” to " + longDay(parseDay(day)) + ".");
+        say(day ? "“" + x.title + "” is on " + longDay(parseDay(day)) + "." : "“" + x.title + "” is back in Unscheduled.");
       } catch (e) {
         if (e.status === 409 && e.body && e.body.current) { put(e.body.current); say("That post was changed elsewhere; showing the newer version.", "warn"); }
         else if (e.status === 404) { drop(x.id); say("That post was deleted elsewhere.", "warn"); }
@@ -334,13 +499,66 @@
       render();
     }
 
+    /* ------------------------------------------------ schedule dialog (the keyboard and touch way to drag) */
+
+    const s = {
+      head: h("h2", {id: id("schtitle")}),
+      date: h("input", {id: id("schdate"), type: "date", required: true}),
+      time: h("input", {id: id("schtime"), type: "time"}),
+      msg: h("div", {class: "status", role: "status"}),
+      cancel: h("button", {class: "ghost", type: "button", text: "Cancel"}),
+      ok: h("button", {type: "submit", text: "Schedule"}),
+    };
+    const sform = h("form", {class: "cal-form", novalidate: true}, s.head,
+      h("div", {class: "cal-row2"},
+        h("div", null, h("label", {for: s.date.id, text: "Day"}), s.date),
+        h("div", null, h("label", {for: s.time.id, text: "Time (empty = all day)"}), s.time)),
+      s.msg, h("div", {class: "ebtns"}, h("span", {class: "sp"}), s.cancel, s.ok));
+    const sdlg = h("dialog", {class: "cal-dlg cal-sdlg", "aria-labelledby": s.head.id}, sform);
+    document.body.append(sdlg);
+    s.cancel.addEventListener("click", () => sdlg.close());
+    sdlg.addEventListener("close", () => {
+      const o = C.scheduling && C.scheduling.opener;
+      C.scheduling = null;
+      if (o && o.isConnected) o.focus();
+    });
+    function openSchedule(x, opener) {
+      C.scheduling = {x, opener};
+      s.head.textContent = "Schedule “" + x.title + "”";
+      s.date.value = C.focus || ymd(new Date());
+      s.time.value = "";
+      s.msg.textContent = "";
+      sdlg.showModal();
+      s.date.focus();
+    }
+    sform.addEventListener("submit", async ev => {
+      ev.preventDefault();
+      const x = C.scheduling && C.scheduling.x;
+      if (!x) return;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(s.date.value)) { s.msg.className = "status err"; s.msg.textContent = "Pick a day."; return; }
+      const day = s.date.value, time = s.time.value ? s.time.value.slice(0, 5) : "";
+      C.scheduling.opener = null;
+      sdlg.close();
+      if (C.railOpen && narrow()) showRail(false);
+      await moveTo(x, day, time);
+      const d = parseDay(day), [a, b] = range();
+      if (d < a || d > b) { C.cursor = d; await load(); }
+      const back = days.querySelector('.cal-entry[data-id="' + x.id + '"]') || days.querySelector('.cal-daybtn[data-day="' + day + '"]');
+      if (back) back.focus();
+    });
+
     /* ------------------------------------------------ editor */
 
     const f = {
-      date: h("input", {id: id("date"), type: "date", required: true}),
+      date: h("input", {id: id("date"), type: "date"}),
       time: h("input", {id: id("time"), type: "time"}),
+      unsched: h("input", {id: id("unsched"), type: "checkbox"}),
       dur: h("input", {id: id("dur"), type: "number", min: "0", max: "10080", step: "5", inputmode: "numeric"}),
-      status: h("select", {id: id("status")}, STATUSES.map(s => h("option", {value: s, text: s[0].toUpperCase() + s.slice(1)}))),
+      status: h("select", {id: id("status")}, STATUSES.map(s => h("option", {value: s, text: label(s)}))),
+      stdot: h("span", {class: "cal-stnow"}, dot()),
+      note: h("textarea", {id: id("note"), maxlength: String(MAXNOTE), rows: "2",
+        placeholder: "e.g. Approved, caption checked"}),
+      noteCount: h("span", {class: "hint", "aria-live": "off"}),
       channel: h("input", {id: id("channel"), maxlength: "40", list: id("channels"), autocomplete: "off",
         placeholder: "instagram_reel"}),
       title: h("input", {id: id("ttl"), maxlength: "120", placeholder: "Untitled"}),
@@ -350,35 +568,57 @@
       assetNow: h("span", {class: "hint cal-assetnow"}),
       assetNone: h("button", {class: "ghost tiny", type: "button", text: "None"}),
       strip: h("div", {class: "cal-pick", role: "group", "aria-label": "Recent pictures and clips"}),
+      hist: h("ol", {class: "cal-hist"}),
       status2: h("div", {class: "status", role: "status"}),
-      del: h("button", {class: "ghost danger", type: "button", text: "Delete"}),
+      del: h("button", {class: "ghost danger", type: "button"}, icon("trash"), "Delete"),
       cancel: h("button", {class: "ghost", type: "button", text: "Cancel"}),
       save: h("button", {type: "submit", text: "Save"}),
       head: h("h2", {id: id("dlgtitle")}),
     };
     const lab = (el, text) => h("label", {for: el.id, text});
+    const noteWrap = h("div", {class: "cal-note", hidden: true}, lab(f.note, "Note for this change (optional, kept in the history)"),
+      f.note, f.noteCount);
+    const histWrap = h("section", {class: "cal-histwrap", "aria-labelledby": id("histtitle")},
+      h("h3", {id: id("histtitle"), text: "History"}), f.hist);
+    const dayRow = h("div", {class: "cal-row3"},
+      h("div", null, lab(f.date, "Day"), f.date),
+      h("div", null, lab(f.time, "Time (empty = all day)"), f.time),
+      h("div", null, lab(f.dur, "Length (min)"), f.dur));
     const form = h("form", {class: "cal-form", novalidate: true},
       f.head,
-      h("div", {class: "cal-row3"},
-        h("div", null, lab(f.date, "Day"), f.date),
-        h("div", null, lab(f.time, "Time (empty = all day)"), f.time),
-        h("div", null, lab(f.dur, "Length (min)"), f.dur)),
       h("div", {class: "cal-row2"},
-        h("div", null, lab(f.status, "Status"), f.status),
+        h("div", null, lab(f.status, "Status"), h("div", {class: "cal-strow"}, f.stdot, f.status)),
         h("div", null, lab(f.channel, "Channel"), f.channel,
           h("datalist", {id: id("channels")}, CHANNELS.map(c => h("option", {value: c}))))),
+      noteWrap,
+      h("label", {class: "cal-check", for: f.unsched.id}, f.unsched, "No date yet (keep it in Unscheduled)"),
+      dayRow,
       h("div", null, lab(f.title, "Title"), f.title),
       h("div", null, lab(f.caption, "Caption"), f.caption, f.count),
       h("div", null, lab(f.project, "Linked cut"), f.project),
       h("div", null, h("span", {class: "label", id: id("assetlab"), text: "Linked picture or clip"}),
         h("div", {class: "cal-assetrow"}, f.assetNow, f.assetNone), f.strip),
+      histWrap,
       f.status2,
       h("div", {class: "ebtns"}, f.del, h("span", {class: "sp"}), f.cancel, f.save));
     const dlg = h("dialog", {class: "cal-dlg", "aria-labelledby": id("dlgtitle")}, form);
     document.body.append(dlg);
 
     const counter = () => { f.count.textContent = f.caption.value.length + " / " + MAXCAP; };
+    const noteCounter = () => { f.noteCount.textContent = f.note.value.length + " / " + MAXNOTE; };
+    function syncStatus() {
+      f.stdot.className = "cal-stnow st-" + f.status.value;
+      const changed = C.editing ? f.status.value !== C.editing.status : false;
+      noteWrap.hidden = !changed && !f.note.value;
+    }
+    function syncUnsched() {
+      dayRow.classList.toggle("cal-off", f.unsched.checked);
+      f.date.disabled = f.time.disabled = f.unsched.checked;
+    }
     f.caption.addEventListener("input", counter);
+    f.note.addEventListener("input", noteCounter);
+    f.status.addEventListener("change", syncStatus);
+    f.unsched.addEventListener("change", syncUnsched);
     f.cancel.addEventListener("click", () => dlg.close());
     f.assetNone.addEventListener("click", () => { C.asset = null; renderAsset(); });
     dlg.addEventListener("close", () => {
@@ -394,6 +634,18 @@
       f.status2.className = "status" + (kind ? " " + kind : "");
       f.status2.setAttribute("role", kind === "err" ? "alert" : "status");
       f.status2.textContent = text || "";
+    }
+
+    function renderHistory(e) {
+      const hist = (e && Array.isArray(e.history) ? e.history : []).slice().reverse();
+      histWrap.hidden = !e;
+      f.hist.replaceChildren(...(hist.length ? hist.map(r => h("li", {class: "st-" + r.status},
+        h("span", {class: "cal-hdot"}, dot()),
+        h("div", {class: "cal-hbody"},
+          h("p", {class: "cal-hline"}, h("strong", {text: label(r.status)}), " · ", r.by || "you", " · ",
+            h("time", {datetime: r.at || "", text: stamp(r.at)})),
+          r.note ? h("p", {class: "cal-hnote", text: r.note}) : null)))
+        : [h("li", {class: "cal-hnone hint", text: "No status changes recorded yet."})]));
     }
 
     const sameRef = (a, b) => !!(a && b && a.root === b.root && a.name === b.name);
@@ -419,7 +671,7 @@
         return h("button", {class: "cal-thumb", type: "button", data: {root: r.ref.root, name: r.ref.name},
           title: name, "aria-label": (r.type === "video" ? "Clip: " : "Picture: ") + name,
           on: {click: () => { C.asset = {root: r.ref.root, name: r.ref.name}; renderAsset(); }}},
-          src ? h("img", {src, alt: "", loading: "lazy"}) : h("span", {class: "cal-vid", text: "▶"}));
+          src ? h("img", {src, alt: "", loading: "lazy"}) : icon("play"));
       }));
       if (!C.recent.length) f.strip.append(h("span", {class: "hint", text: "Nothing made yet."}));
       renderAsset();
@@ -432,17 +684,19 @@
     }
 
     function fillForm(e, day) {
-      const w = e ? splitWhen(e.when) : {day: day || ymd(new Date()), time: "", tail: ""};
+      const w = e ? splitWhen(e.when) : {day: day || "", time: "", tail: ""};
       f.head.textContent = e ? "Edit post" : "New post";
-      f.date.value = w.day; f.time.value = w.time;
+      f.unsched.checked = e ? !e.when : !day;
+      f.date.value = w.day || C.focus || ymd(new Date()); f.time.value = w.time;
       f.dur.value = String(e ? e.duration_min || 0 : 0);
       f.status.value = e ? e.status : "idea";
+      f.note.value = "";
       f.channel.value = e ? e.channel || "" : "";
       f.title.value = e && e.title !== "Untitled" ? e.title : "";
       f.caption.value = e ? e.caption || "" : "";
       f.del.hidden = !e;
       C.asset = e && e.asset ? {root: e.asset.root, name: e.asset.name} : null;
-      counter();
+      counter(); noteCounter(); syncStatus(); syncUnsched(); renderHistory(e);
       renderPickers();
     }
 
@@ -456,15 +710,22 @@
     }
 
     function payload() {
-      const day = f.date.value;
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) throw new Error("Pick a day.");
-      const old = C.editing ? splitWhen(C.editing.when) : {time: "", tail: ""};
-      const time = f.time.value ? f.time.value.slice(0, 5) : "";
-      const tail = time && time === old.time ? old.tail : (time && old.tail ? old.tail.replace(/^:\d\d/, "") : "");
+      let when = null;
+      if (!f.unsched.checked) {
+        const day = f.date.value;
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) throw new Error("Pick a day, or tick “No date yet”.");
+        const old = C.editing ? splitWhen(C.editing.when) : {time: "", tail: ""};
+        const time = f.time.value ? f.time.value.slice(0, 5) : "";
+        const tail = time && time === old.time ? old.tail : (time && old.tail ? old.tail.replace(/^:\d\d/, "") : "");
+        when = joinWhen(day, time, tail);
+      }
       const dur = f.dur.value === "" ? 0 : Number(f.dur.value);
       if (!Number.isInteger(dur) || dur < 0 || dur > 10080) throw new Error("Length must be whole minutes, 0 to 10080.");
-      return {when: joinWhen(day, time, tail), duration_min: dur, status: f.status.value, channel: f.channel.value,
+      if (f.note.value.length > MAXNOTE) throw new Error("The note is too long (" + MAXNOTE + " characters at most).");
+      const body = {when, duration_min: dur, status: f.status.value, channel: f.channel.value,
         title: f.title.value, caption: f.caption.value, project: f.project.value || null, asset: C.asset};
+      if (f.note.value.trim()) body.note = f.note.value;
+      return body;
     }
 
     form.addEventListener("submit", async ev => {
@@ -478,11 +739,12 @@
         const saved = e0 ? await api("POST", "/api/calendar/" + encodeURIComponent(e0.id), Object.assign({rev: e0.rev}, body))
           : await api("POST", "/api/calendar", body);
         put(saved);
-        C.focus = splitWhen(saved.when).day;
-        C.opener = {dataset: {fk: "e" + saved.id}};
+        if (saved.when) { C.focus = splitWhen(saved.when).day; C.opener = {dataset: {fk: "e" + saved.id}}; }
+        else C.opener = {dataset: {fk: "r" + saved.id}};
         dlg.close();
         render();
-        say((e0 ? "Saved “" : "Added “") + saved.title + "”.");
+        const moved = e0 && e0.status !== saved.status ? " Now " + label(saved.status) + "." : "";
+        say((e0 ? "Saved “" : "Added “") + saved.title + "”." + moved);
       } catch (e) {
         if (e.status === 409 && e.body && e.body.current) {
           put(e.body.current); C.editing = e.body.current; fillForm(e.body.current); render();
@@ -500,7 +762,7 @@
       try {
         await api("POST", "/api/calendar/" + encodeURIComponent(e0.id) + "/delete", {rev: e0.rev});
         drop(e0.id);
-        C.opener = {dataset: {fk: "d" + splitWhen(e0.when).day}};
+        C.opener = e0.when ? {dataset: {fk: "d" + splitWhen(e0.when).day}} : railNew;
         dlg.close(); render();
         say("Deleted “" + e0.title + "”.");
       } catch (e) {
@@ -515,7 +777,7 @@
     /* a new post with a file already attached (Posts › Add to calendar) */
     function addWith(o) {
       openEditor(null, ymd(new Date()));
-      f.status.value = "draft";
+      f.status.value = "draft"; syncStatus();
       if (o && o.title) f.title.value = String(o.title).slice(0, 120);
       if (o && o.caption) { f.caption.value = String(o.caption).slice(0, MAXCAP); counter(); }
       if (o && o.asset) { C.asset = {root: o.asset.root, name: o.asset.name}; renderPickers(); }

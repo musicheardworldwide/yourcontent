@@ -25,8 +25,8 @@ def _read(*parts):
 
 HTML, JS, CSS = _read("static", "index.html"), _read("static", "app.js"), _read("static", "style.css")
 NOTICE = ("YourContent doesn't filter prompts. You're responsible for what you make: don't depict real people without "
-          "their consent, never sexualise minors, and follow the law where you live. Some models are non-commercial; "
-          "every file is labelled.")
+          "their consent, never sexualize minors, and follow the law where you live. Some models are non-commercial; "
+          "every file is labeled.")
 FOOTER = "Only use a real person's likeness with their consent. You're responsible for what you make and share."
 # The names are split so this file does not itself trip a repo-wide scan (same rule as test_portability.py).
 _J = "".join
@@ -62,6 +62,15 @@ class StaticPageTest(unittest.TestCase):
         self.assertEqual(sorted(set(re.findall(r"url\(([^)]*)\)", tokens))),
                          ["/static/fonts/Inter_opsz_wght.ttf", "/static/fonts/JetBrainsMono_wght.ttf",
                           "/static/fonts/SpaceGrotesk_wght.ttf"])
+
+    def test_sign_in_page_has_no_inline_code(self):
+        page = _read("static", "login.html")
+        self.assertNotRegex(page, r"<script(?![^>]*\bsrc=)[^>]*>")
+        self.assertNotIn("<style", page)
+        self.assertNotRegex(page, r"\s(style|on[a-z]+)=")
+        js = _read("static", "login.js") + _read("static", "home.js") + _read("static", "studio.js")
+        for bad in ("innerHTML", "outerHTML", "insertAdjacentHTML", "eval(", "new Function", "document.write"):
+            self.assertNotIn(bad, js, bad)
 
     def test_header_is_just_media_lab(self):
         self.assertIn("<title>YourContent</title>", HTML)
@@ -132,7 +141,7 @@ class LicenceTextTest(unittest.TestCase):
             self.assertTrue(t.startswith("⚠"), t)
             self.assertIn("non-commercial", t)
             self.assertIn("Includes uploads", t)
-        self.assertIn("unknown licence", got[2])
+        self.assertIn("unknown license", got[2])
         self.assertEqual(got[3], "")
 
 
@@ -375,7 +384,7 @@ class BrowserTest(unittest.TestCase):
 
     def test_status_lines_are_live_regions(self):
         pg = self.page()
-        for sid in ("status", "vstatus", "mstatus", "xstatus", "tstatus", "loginstatus"):
+        for sid in ("status", "vstatus", "mstatus", "xstatus", "tstatus"):
             self.assertIn(pg.get_attribute("#" + sid, "role"), ("status", "alert"), sid)
         pg.fill("#prompt", "")
         pg.click("#go")
@@ -558,7 +567,9 @@ class BrowserTest(unittest.TestCase):
         pg = self.page(init="try{localStorage.setItem('qs-model','old-int8')}catch(e){}", fresh=True)
         self.assertEqual(pg.evaluate("localStorage.getItem('ml-model')"), "int8")
         self.expect(pg.locator("#model")).to_have_value("int8")
-        pg.click("#noticeok")
+        self.expect(pg.locator("#wizstep")).to_have_text("Step 1 of 3")   # launch UI: a three-step wizard
+        for _ in range(3):
+            pg.click("#noticeok")
         self.expect(pg.locator("#notice")).to_be_hidden()
         pg.reload()
         self.expect(pg.locator("#strip .thumb").first).to_be_visible()
@@ -594,14 +605,13 @@ class BrowserTest(unittest.TestCase):
         self.addCleanup(ctx.close)
         pg = ctx.new_page()
         pg.goto(self.url)
-        self.expect(pg.locator("#login")).to_be_visible()
+        self.expect(pg).to_have_url(re.compile(r"/login\?next="))          # the sign-in page (launch UI)
         pg.fill("#token", "wrong")
-        pg.click("#login button")
-        self.expect(pg.locator("#loginstatus")).to_contain_text("not right")
+        pg.click("#signin")
+        self.expect(pg.locator("#loginstatus")).to_contain_text("isn't right")
         pg.fill("#token", "t0ken-for-tests")
-        pg.click("#login button")
+        pg.click("#signin")
         self.expect(pg.locator("#strip .thumb").first).to_be_visible()
-        self.expect(pg.locator("#login")).to_be_hidden()
         self.assertFalse(any("t0ken" in r[1] for r in self.srv.requests))   # never in a URL
 
 

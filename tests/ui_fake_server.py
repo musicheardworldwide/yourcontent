@@ -43,7 +43,10 @@ STATIC = {"/": ("index.html", "text/html; charset=utf-8"),
           "/static/tokens.css": ("tokens.css", "text/css; charset=utf-8"),
           "/static/theme.js": ("theme.js", "text/javascript; charset=utf-8"),
           "/static/icons.svg": ("icons.svg", "image/svg+xml"),
-          "/static/favicon.svg": ("favicon.svg", "image/svg+xml")}
+          "/static/favicon.svg": ("favicon.svg", "image/svg+xml"),
+          "/login": ("login.html", "text/html; charset=utf-8"),
+          "/static/login.js": ("login.js", "text/javascript; charset=utf-8"),
+          "/static/login.css": ("login.css", "text/css; charset=utf-8")}
 CSP = ("default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob: data:; "
        "media-src 'self' blob:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'")
 SR = 48000

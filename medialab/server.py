@@ -51,7 +51,10 @@ STATIC = {"/": ("index.html", "text/html; charset=utf-8"),
           "/static/tokens.css": ("tokens.css", "text/css; charset=utf-8"),
           "/static/theme.js": ("theme.js", "text/javascript; charset=utf-8"),
           "/static/icons.svg": ("icons.svg", "image/svg+xml"),
-          "/static/favicon.svg": ("favicon.svg", "image/svg+xml")}
+          "/static/favicon.svg": ("favicon.svg", "image/svg+xml"),
+          "/login": ("login.html", "text/html; charset=utf-8"),
+          "/static/login.js": ("login.js", "text/javascript; charset=utf-8"),
+          "/static/login.css": ("login.css", "text/css; charset=utf-8")}
 # The UI's own fonts (OFL-1.1), copied at image build time from the render service's pinned set (render/fonts.json);
 # never committed. A missing file is a 404 and the page falls back to the system font.
 FONT_FILES = ("Inter_opsz_wght.ttf", "SpaceGrotesk_wght.ttf", "JetBrainsMono_wght.ttf")
@@ -75,7 +78,7 @@ FAIL_LIMIT = 10             # failures per minute per IP
 HEALTH_TTL = 30.0
 PUBLIC = {("GET", "/"), ("GET", "/static/app.js"), ("GET", "/static/style.css"), ("GET", "/static/tokens.css"),
           ("GET", "/static/theme.js"), ("GET", "/static/icons.svg"), ("GET", "/static/favicon.svg"),
-          ("GET", "/api/config"),
+          ("GET", "/api/config"), ("GET", "/login"), ("GET", "/static/login.js"), ("GET", "/static/login.css"),
           ("POST", "/api/login"), ("POST", "/api/logout")}
 LOCAL_HOSTS = {"localhost", "127.0.0.1", "[::1]"}
 PROXY_RE = re.compile(r"^[0-9a-f]{64}$")
@@ -521,8 +524,23 @@ def _seconds(resolved: dict) -> float:
 
 # --------------------------------------------------------------------------------------------- routes
 
+def _signed_in(h) -> bool:
+    """For page loads only: does this browser carry a good session cookie? (The guard does the real checks.)"""
+    state: State = h.server.state
+    if not state.cfg.token:
+        return True
+    c = _cookie(h, COOKIE)
+    return c is not None and hmac.compare_digest(c.encode(), state.session.encode())
+
+
 def r_index(h, m):
-    fname, ctype = STATIC[h.path.partition("?")[0]]
+    path = h.path.partition("?")[0]
+    # the app page sends a signed-out browser to the sign-in page, and the sign-in page sends a signed-in one back
+    if path == "/" and not _signed_in(h):
+        return _send_raw(h, 302, b"", "text/plain; charset=utf-8", {"Location": "/login", "Cache-Control": "no-store"})
+    if path == "/login" and h.server.state.cfg.token and _signed_in(h):
+        return _send_raw(h, 302, b"", "text/plain; charset=utf-8", {"Location": "/", "Cache-Control": "no-store"})
+    fname, ctype = STATIC[path]
     try:
         with open(os.path.join(STATIC_DIR, fname), "rb") as f:
             body = f.read()
@@ -974,6 +992,9 @@ ROUTES: list[tuple[str, re.Pattern, object]] = [(meth, re.compile("^" + rx + "$"
     ("GET", r"/static/tokens\.css", r_index),
     ("GET", r"/static/theme\.js", r_index),
     ("GET", r"/static/icons\.svg", r_index),
+    ("GET", r"/login", r_index),
+    ("GET", r"/static/login\.js", r_index),
+    ("GET", r"/static/login\.css", r_index),
     ("GET", r"/static/fonts/([A-Za-z0-9_]+\.ttf)", r_font),
     ("POST", r"/api/login", r_login),
     ("POST", r"/api/logout", r_logout),

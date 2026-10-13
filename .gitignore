@@ -44,3 +44,10 @@ __pycache__/
 
 # Logo exports, rebuilt by brand/build.py --png (no media in git)
 brand/export/
+
+# marketing site build output (python3 site/build.py)
+site/dist/
+
+# setup video outputs and caches (python3 video/make.py)
+video/out/
+site/media/

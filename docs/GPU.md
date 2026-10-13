@@ -6,7 +6,7 @@ video recipes, the calendar, Google, agents) runs without one.
 ## Short version
 
 - **24 GB or more (NVIDIA):** every feature with the stock files. 32 GB is the only card size measured so far.
-- **12–16 GB, AMD, Apple Silicon:** smaller quantised files can work but are **not tested** in YourContent yet;
+- **12–16 GB, AMD, Apple Silicon:** smaller quantized files can work but are **not tested** in YourContent yet;
   see *Smaller cards* below.
 - **No GPU:** use posts, recipes, calendar and agents; generation features show as unavailable with the reason.
 
@@ -42,8 +42,8 @@ These are peaks on a 32 GB card, where ComfyUI keeps whatever fits resident: **n
 
 ## Smaller cards (not measured)
 
-Typical starting points, untested in YourContent. A quantisation keeps its model's licence: Qwen-Image-2512 files
-stay Apache-2.0 (commercial OK), every Qwen-Image 2.1 file keeps the Qwen Research Licence (non-commercial).
+Typical starting points, untested in YourContent. A quantization keeps its model's license: Qwen-Image-2512 files
+stay Apache-2.0 (commercial OK), every Qwen-Image 2.1 file keeps the Qwen Research License (non-commercial).
 
 - **16 GB:** Qwen-Image-2512 Q4/Q5 GGUF (or 2.1 Q8_0) with the text encoder on CPU; Wan 2.2 Q4_K_M or Q5_K_M with
   umt5 Q8_0.

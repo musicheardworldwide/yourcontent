@@ -12,12 +12,12 @@ from . import VERSION, mcp_routes
 GROUP = re.compile(r"\((?!\?)[^)]*\)")
 # Routes no MCP tool fronts (owner-only or browser-only), keyed "METHOD path".
 SUMMARIES = {
-    "GET /api/config": "Limits, presets, model choices and licence rows for the page, and how the app is reached: "
+    "GET /api/config": "Limits, presets, model choices and license rows for the page, and how the app is reached: "
                        "listens (address), loopback_only, token_required (no credential needed).",
     "POST /api/login": "Exchange the owner token for a session cookie.",
     "POST /api/logout": "Drop the session cookie.",
     "GET /api/tracks": "Music tracks usable in a cut.",
-    "GET /api/info/{p1}/{p2}": "One file's details and licence record (root, name).",
+    "GET /api/info/{p1}/{p2}": "One file's details and license record (root, name).",
     "POST /api/upload": "Upload a picture, video or audio file: raw body, Content-Type, X-Filename header.",
     "POST /api/delete": "Delete a file YourContent made or adopted, for good (owner only).",
     "GET /api/jobs": "All jobs, newest first.",
@@ -28,10 +28,11 @@ SUMMARIES = {
     "POST /api/agents": "Make an agent token and its setup prompt; the token is shown once (owner only).",
     "POST /api/agents/{p1}/revoke": "Revoke an agent token (owner only).",
     "GET /api/openapi.json": "This document.",
-    "POST /api/brandkits": "Make a brand kit (name, colours, fonts, logo ref, handle, voice, default styles).",
+    "POST /api/brandkits": "Make a brand kit (name, colors, fonts, logo ref, handle, voice, default styles).",
     "POST /api/brandkits/{p1}": "Replace a brand kit.",
     "POST /api/brandkits/{p1}/delete": "Delete a brand kit (owner only).",
     "GET /api/posts/health": "Whether the post renderer is up, and why not.",
+    "GET /api/posts/thumb": "A style card: the style drawn small in a kit with sample words (PNG, cached).",
     "GET /api/calendar.ics": "The calendar as an iCalendar file (from, to optional).",
     "GET /api/calendar/feed": "The private subscribe link for calendar apps (owner only).",
     "POST /api/calendar/feed/rotate": "Replace the subscribe link; the old one stops working (owner only).",

@@ -33,7 +33,7 @@ render/ (own container, internal network only): server.py stdlib HTTP, POST /ren
 ```
 
 Posts: `POST /api/posts/render` sends the kit, text and pictures (as data URLs) to the render service; a saved post
-lands in `lab` as `post_*.png|jpg` with a sidecar whose inputs are its pictures and the kit's logo (licence: worst
+lands in `lab` as `post_*.png|jpg` with a sidecar whose inputs are its pictures and the kit's logo (license: worst
 of those; text-only = commercial OK; an unknown input = unknown). `preview: true` returns the image unsaved.
 
 Folders (a file is always a ref `{root, name}`, never a path):
@@ -61,7 +61,7 @@ Flows:
 - **Music:** ACE-Step 1.5 turbo, 10-node graph, lossless FLAC via SaveAudio (SaveAudioAdvanced as fallback).
 - **Preview / export:** `timeline.plan` (integer frames, crossfade clamp, music window) → one two-pass-normalised
   48 kHz mix shared by proxy and final → one `filter_complex` → verify frames and audio length → sidecar with the
-  render block and inherited licence.
+  render block and inherited license.
 - **Delete:** file + poster + sidecar, then `POST /history {delete: [ledger pids]}`; nothing else in ComfyUI.
 - **Start:** empty `DATA/tmp`, configure modules, adopt legacy files when `YOURCONTENT_ADOPT_LEGACY=1` (idempotent;
   originals are only read).

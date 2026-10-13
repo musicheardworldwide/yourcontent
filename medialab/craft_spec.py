@@ -30,7 +30,7 @@ APP_NAMES = {"photocraft": "PhotoCraft", "lightcraft": "LightCraft", "filmcraft"
              "effectcraft": "EffectCraft"}
 APP_LICENCE = "MIT OR Apache-2.0"
 APP_SOURCE = "https://github.com/storytold"
-SAM_LICENCE = ("SAM License (Meta), https://github.com/facebookresearch/sam3/blob/main/LICENSE: a custom licence, "
+SAM_LICENCE = ("SAM License (Meta), https://github.com/facebookresearch/sam3/blob/main/LICENSE: a custom license, "
                "not open source; the weights are never shipped and load only when you turn AI masks on")
 
 JOB_ID = re.compile(r"c-\d{14}-[0-9a-f]{6}")
@@ -120,7 +120,7 @@ def _hex(v, what):
     if v in (None, ""):
         return None
     if not isinstance(v, str) or not HEX.fullmatch(v.strip()):
-        raise SpecError(f"brand {what} must be a colour like #1a2b3c")
+        raise SpecError(f"brand {what} must be a color like #1a2b3c")
     v = v.strip().lower()
     return "#" + "".join(c * 2 for c in v[1:]) if len(v) == 4 else v
 
@@ -401,19 +401,19 @@ def recipes_doc() -> dict:
     return {
         "photo.grade": {"app": "LightCraft", "params": {
             "image": f"required: {ref} to a JPEG/PNG/WebP",
-            "look": f"brand (default with a brand kit: derived from its colours) | {' | '.join(LOOKS)} | custom",
+            "look": f"brand (default with a brand kit: derived from its colors) | {' | '.join(LOOKS)} | custom",
             "values": "optional {control: number} on top of the look, e.g. {\"light.exposure\": 0.3}",
             "format": "jpeg | png", "long_edge": "320-4096 (2048)", "quality": "50-100 (88)"},
             "out": ["the graded picture (JPEG or PNG)"]},
         "photo.finish": {"app": "PhotoCraft", "params": {
             "image": "required", "format": "1:1 | 4:5 | 9:16 | 1.91:1 (4:5)",
-            "focus": "[x, y] 0..1, the point the crop keeps (centre)", "width": "320-4096 (format width)",
+            "focus": "[x, y] 0..1, the point the crop keeps (center)", "width": "320-4096 (format width)",
             "contrast": "none | soft | strong", "vibrance": "-100..100 (10)", "warmth": "-50..50 (0)",
             "psd": "true: also a layered PSD", "quality": "50-100"},
             "out": ["the finished JPEG", "a layered PSD (download)"]},
         "video.titlecard": {"app": "EffectCraft", "params": {
             "headline": "required, <= 80 chars", "kicker": "<= 60", "sub": "<= 120",
-            "background": "optional still (else the brand's background colour)", "motion": "push | pan | still",
+            "background": "optional still (else the brand's background color)", "motion": "push | pan | still",
             "format": "9:16 | 4:5 | 1:1", "seconds": "2-10 (4)", "fps": "24 | 30",
             "alpha": "true: text only on transparency, ProRes 4444 .mov for compositing over video",
             "logo": "true (default when the brand kit has a logo): the logo at the top",

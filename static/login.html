@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sign in · YourContent</title>
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+<script src="/static/theme.js"></script><link rel="stylesheet" href="/static/tokens.css"><link rel="stylesheet" href="/static/login.css"></head>
+<body class="auth">
+<main class="authwrap">
+  <a class="authbrand" href="/"><svg class="brandmark" viewBox="0 0 64 64" aria-hidden="true"><path class="bm-page" d="M12 8h27l13 13v31a4 4 0 0 1-4 4H16a4 4 0 0 1-4-4z"/><path class="bm-fold" d="M39 8v13h13z"/><path class="bm-play" d="M27 29l14 9-14 9z"/></svg><span>YourContent</span></a>
+  <form class="authcard" id="loginform" novalidate>
+    <h1>Welcome back</h1>
+    <p class="authsub">Sign in to your YourContent.</p>
+    <label for="token">Access key</label>
+    <div class="pwrow">
+      <input id="token" name="token" type="password" autocomplete="current-password" spellcheck="false" required>
+      <button class="peek" id="peek" type="button" aria-label="Show key" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#eye"/></svg></button>
+    </div>
+    <p class="status" id="loginstatus" role="status"></p>
+    <button class="primary" id="signin" type="submit">Sign in</button>
+    <details class="keyhelp"><summary>Where's my key?</summary>
+      <p>It's the <code>MEDIA_LAB_TOKEN</code> set where YourContent runs (or the file named by
+        <code>MEDIA_LAB_TOKEN_FILE</code>). Whoever set up this machine has it.</p></details>
+  </form>
+  <p class="authalt">New here? <a href="https://yourcontent.online/signup.html">Join the hosted waitlist</a></p>
+  <p class="authlegal">Only use a real person's likeness with their consent. You're responsible for what you make and share.</p>
+</main>
+<script src="/static/login.js"></script>
+</body></html>

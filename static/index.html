@@ -4,38 +4,55 @@
 <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
 <script src="/static/theme.js"></script><link rel="stylesheet" href="/static/tokens.css"><link rel="stylesheet" href="/static/style.css"><!--ext-css--></head>
 <body class="tab-picture card-clip">
-<header class="top">
-  <h1><svg class="brandmark" viewBox="0 0 64 64" aria-hidden="true"><path class="bm-page" d="M12 8h27l13 13v31a4 4 0 0 1-4 4H16a4 4 0 0 1-4-4z"/><path class="bm-fold" d="M39 8v13h13z"/><path class="bm-play" d="M27 29l14 9-14 9z"/></svg>YourContent</h1>
+<aside class="sidenav" id="sidenav" aria-label="YourContent">
+  <div class="sidehead">
+    <h1><svg class="brandmark" viewBox="0 0 64 64" aria-hidden="true"><path class="bm-page" d="M12 8h27l13 13v31a4 4 0 0 1-4 4H16a4 4 0 0 1-4-4z"/><path class="bm-fold" d="M39 8v13h13z"/><path class="bm-play" d="M27 29l14 9-14 9z"/></svg>YourContent</h1>
+    <button class="ghost iconbtn collapse" id="collapsebtn" type="button" aria-label="Collapse sidebar" aria-expanded="true"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#collapse"/></svg></button>
+  </div>
   <nav class="viewnav" id="viewnav" aria-label="Views" hidden></nav>
   <span class="sp"></span>
-  <button class="dot" id="dot" type="button" title="Checking ComfyUI…" aria-label="Checking ComfyUI…"></button>
-  <button class="ghost hdr-wide" id="themebtn" data-theme-switch type="button" aria-label="Change theme"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#system"/></svg><span class="lbltext">System</span></button>
-  <button class="ghost hdr-wide" id="tourbtn" type="button"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#help"/></svg>Tour</button>
-  <button class="ghost" id="aboutbtn" type="button">About</button>
-</header>
+  <div class="sidefoot">
+    <button class="dot" id="dot" type="button" title="Checking ComfyUI…" aria-label="Checking ComfyUI…"><span class="dotlabel" id="dotlabel">Checking GPU…</span></button>
+    <button class="ghost sideb" id="themebtn" data-theme-switch type="button" aria-label="Change theme"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#system"/></svg><span class="lbltext">System</span></button>
+    <button class="ghost sideb" id="tourbtn" type="button"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#help"/></svg><span class="sidelbl">Tour</span></button>
+    <button class="ghost sideb" id="aboutbtn" type="button"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#sparkle"/></svg><span class="sidelbl">About</span></button>
+  </div>
+</aside>
+<div class="shell" id="shell">
 
 <dialog class="welcome" id="notice" aria-labelledby="welcometitle">
-  <h2 id="welcometitle">Welcome to YourContent</h2>
-  <p class="welcomelead">Turn your pictures and words into posts in your brand, plan them on a calendar, and make
-    pictures, clips and music on your own GPU.</p>
-  <p class="welcomenote">YourContent doesn't filter prompts. You're responsible for what you make: don't depict real people without their
-    consent, never sexualise minors, and follow the law where you live. Some models are non-commercial; every file is
-    labelled.</p>
+  <div class="wizprog" aria-hidden="true"><span id="wizbar"></span></div>
+  <p class="wizstep" id="wizstep">Step 1 of 3</p>
+  <section class="wizpane" id="wiz1">
+    <h2 id="welcometitle">Welcome to YourContent</h2>
+    <p class="welcomelead">What do you want to do first? You can do all of it later.</p>
+    <div class="goals" role="group" aria-label="First goal">
+      <button class="goal" type="button" data-goal="posts" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#layers"/></svg><b>Make posts in my brand</b><span>Pick a style, type your words, get a finished post.</span></button>
+      <button class="goal" type="button" data-goal="make" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#image"/></svg><b>Make pictures, clips and music</b><span>Generate on your own GPU and cut a reel.</span></button>
+      <button class="goal" type="button" data-goal="calendar" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#calendar"/></svg><b>Plan my content</b><span>Ideas, drafts and ready posts on a calendar.</span></button>
+    </div>
+    <p class="wizvideo"><a class="accent" href="https://yourcontent.online/setup.html" target="_blank" rel="noopener">Watch the 3-minute setup video</a></p>
+  </section>
+  <section class="wizpane" id="wiz2" hidden>
+    <h2>Is your GPU ready?</h2>
+    <p class="welcomelead">YourContent makes pictures, clips and music with ComfyUI on your own graphics card.</p>
+    <div class="gpucheck" id="wizgpu" role="status">Checking…</div>
+    <p class="hint">Not ready yet? You can still design posts, plan and edit. Settings shows what is missing and how to fix it.</p>
+  </section>
+  <section class="wizpane" id="wiz3" hidden>
+    <h2>One thing before you start</h2>
+    <p class="welcomenote">YourContent doesn't filter prompts. You're responsible for what you make: don't depict real people without their
+    consent, never sexualize minors, and follow the law where you live. Some models are non-commercial; every file is
+    labeled.</p>
+  </section>
   <div class="welcomebtns">
-    <button id="noticeok" type="button"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#layers"/></svg><span id="noticeoktext">Make a post</span></button>
-    <button class="ghost" id="noticemake" type="button"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#image"/></svg>Make a picture</button>
+    <button class="ghost" id="wizback" type="button">Back</button>
+    <span class="sp"></span>
     <button class="ghost" id="noticetour" type="button"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#help"/></svg>Take the tour</button>
+    <button id="noticeok" type="button"><span id="noticeoktext">Continue</span><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#arrow"/></svg></button>
   </div>
-  <p class="hint">This shows once on this device; About opens it again.</p>
+  <p class="hint">Shows once on this device. Settings › Welcome opens it again.</p>
 </dialog>
-
-<form class="bar login" id="login" hidden>
-  <label for="token">This YourContent needs its access token.</label>
-  <input id="token" type="password" autocomplete="current-password">
-  <button type="submit">Sign in</button>
-  <span class="status" id="loginstatus" role="status"></span>
-</form>
-
 <main id="main">
 <div class="col colL">
   <section class="side" id="pane-picture" aria-label="Picture">
@@ -70,7 +87,7 @@
     <button class="ghost" id="tovideo" type="button"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#film"/></svg>Animate this</button>
     <button class="ghost" id="extend" type="button"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#forward"/></svg>Extend</button>
     <button class="ghost" id="tocut" type="button"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#cut"/></svg>Add to cut</button>
-    <button class="ghost sec" id="info" type="button" title="Details and licence" aria-label="Details and licence">ⓘ</button>
+    <button class="ghost sec" id="info" type="button" title="Details and license" aria-label="Details and license">ⓘ</button>
     <span class="sp"></span>
     <button class="ghost danger sec" id="del" type="button"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#trash"/></svg>Delete forever</button>
     <button class="ghost more" id="toolsmore" type="button" aria-label="More actions" aria-expanded="false">⋯</button>
@@ -80,13 +97,13 @@
   <nav class="ptabs" id="ptabs" aria-label="Sections">
     <button type="button" data-tab="picture">Picture</button>
     <button type="button" data-tab="clip">Clip</button>
-    <button type="button" data-tab="cut" id="ptabcut">Cut</button>
+    <button type="button" data-tab="cut" id="ptabcut">Reel</button>
   </nav>
 
   <div class="panel card" id="card">
     <div class="ctabs" role="tablist">
       <button type="button" role="tab" data-tab="clip">Make clip</button>
-      <button type="button" role="tab" data-tab="cut" id="ctabcut">Cut</button>
+      <button type="button" role="tab" data-tab="cut" id="ctabcut">Make a reel</button>
     </div>
 
     <section class="pane" id="pane-clip" aria-label="Make clip">
@@ -103,7 +120,7 @@
       <div id="vstatus" class="status" role="status"></div>
     </section>
 
-    <section class="pane" id="pane-cut" aria-label="Cut">
+    <section class="pane" id="pane-cut" aria-label="Reel">
       <div class="prow">
         <input id="pname" maxlength="80" aria-label="Cut name" placeholder="Untitled cut">
         <button class="ghost tiny" id="pmenubtn" type="button" aria-label="Cuts menu" aria-expanded="false">▾</button>
@@ -191,6 +208,9 @@
 </div>
 </main>
 
+<section class="view" id="view-home" aria-label="Home" hidden><div class="viewbody"></div></section>
+<section class="view" id="view-library" aria-label="Library" hidden><h2>Library</h2><div class="viewbody"></div></section>
+<section class="view" id="view-settings" aria-label="Settings" hidden><h2>Settings</h2><div class="viewbody"></div></section>
 <section class="view vfull" id="view-posts" aria-label="Posts" hidden><h2 class="sr">Posts</h2><div data-mod="MediaLabPosts"></div>
   <div class="vpanel vcraft" data-mlp-canvas><h3>Photo and video recipes</h3><div data-mod="MediaLabCraft"></div></div>
 </section>
@@ -203,16 +223,17 @@
 </section>
 
 <footer class="foot">Only use a real person's likeness with their consent. You're responsible for what you make and share.</footer>
+</div>
 
 <dialog id="about">
   <h2>About YourContent</h2>
   <p>YourContent doesn't filter prompts. You're responsible for what you make: don't depict real people without their
-    consent, never sexualise minors, and follow the law where you live. Some models are non-commercial; every file is
-    labelled.</p>
+    consent, never sexualize minors, and follow the law where you live. Some models are non-commercial; every file is
+    labeled.</p>
   <table class="lictable">
-    <thead><tr><th>Part</th><th>Licence</th></tr></thead>
+    <thead><tr><th>Part</th><th>License</th></tr></thead>
     <tbody>
-      <tr><td>YourContent</td><td>PolyForm Small Business 1.0.0: free for companies and organisations under 100 people and US$1M revenue</td></tr>
+      <tr><td>YourContent</td><td>PolyForm Small Business 1.0.0: free for companies and organizations under 100 people and US$1M revenue</td></tr>
       <tr><td>Qwen-Image-2512 (pictures, default)</td><td>Apache-2.0, outputs commercial OK</td></tr>
       <tr><td>Qwen-Image 2.1 (pictures with references)</td><td>Non-commercial research</td></tr>
       <tr><td>Wan 2.2, lightx2v, umt5 (clips)</td><td>Apache-2.0</td></tr>

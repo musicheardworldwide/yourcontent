@@ -207,7 +207,7 @@ def doc() -> dict:
             "brand": "optional {colors: {bg, fg, accent, accent2, muted}, fonts: {display, body}, logo: {root, "
                      "name}, handle}; or brand_kit: <id>",
             "how": "POST /api/craft {recipe, params, brand}; poll GET /api/craft/<job>. Finished files are in the "
-                   "lab folder with a sidecar (licence of the inputs carried through), usable as inputs to "
+                   "lab folder with a sidecar (license of the inputs carried through), usable as inputs to "
                    "other recipes and to cuts.",
             "tools": {name: {"licence": craft_spec.APP_LICENCE, "source": f"{craft_spec.APP_SOURCE}/{app}"}
                       for app, name in craft_spec.APP_NAMES.items()}}

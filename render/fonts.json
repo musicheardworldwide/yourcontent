@@ -1,4 +1,4 @@
-{"note": "Fonts the render service embeds. Fetched at image build time by fetch_fonts.py from the upstream Google Fonts repository at one pinned commit; every file is checked against its sha256 and the build fails on a mismatch. Licences: FONTS.md.",
+{"note": "Fonts the render service embeds. Fetched at image build time by fetch_fonts.py from the upstream Google Fonts repository at one pinned commit; every file is checked against its sha256 and the build fails on a mismatch. Licenses: FONTS.md.",
  "base": "https://raw.githubusercontent.com/google/fonts/bd8f81ddb5c74d5c8897b36ad88b440266245103/",
  "commit": "bd8f81ddb5c74d5c8897b36ad88b440266245103",
  "fonts": [

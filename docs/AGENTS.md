@@ -42,9 +42,9 @@ the owner revokes it in Connect.
 
 Files are always references `{root, name}` as `list_media` returns them, never paths.
 
-## 3. Licences
+## 3. Licenses
 
-Every file has a sidecar with the models that made it and their licences, and anything made from other files
+Every file has a sidecar with the models that made it and their licenses, and anything made from other files
 inherits the most restrictive one.
 
 - `commercial_ok: false`: say so before suggesting the file for business or paid use (for example, anything made
@@ -56,7 +56,7 @@ inherits the most restrictive one.
 - Never post to a social network, never send messages for the owner, never delete. Finished work goes on the
   calendar as `ready`.
 - Keep the credential secret: not in captions, files, the Sheet or chat replies.
-- Don't depict real people without their consent; never sexualise minors. YourContent does not filter prompts, so
+- Don't depict real people without their consent; never sexualize minors. YourContent does not filter prompts, so
   this is on you and the owner.
 
 ## 5. Google workspace

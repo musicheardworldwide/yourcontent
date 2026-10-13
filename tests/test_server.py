@@ -293,8 +293,10 @@ class TokenTest(ServerCase):
         return {"token": TOKEN}
 
     def test_token_required_except_page_and_config(self):
-        for path in ("/", "/static/app.js", "/static/style.css", "/api/config"):
+        for path in ("/login", "/static/app.js", "/static/style.css", "/static/login.js", "/api/config"):
             self.assertEqual(self.req("GET", path)[0], 200, path)
+        code, h, _ = self.req("GET", "/")                  # launch UI: a signed-out browser goes to the sign-in page
+        self.assertEqual((code, h.get("location")), (302, "/login"))
         self.assertTrue(self.req("GET", "/api/config")[2]["auth"])
         self.assertTrue(self.req("GET", "/api/config")[2]["token_required"])
         for method, path in (("GET", "/api/recent"), ("GET", "/api/health"), ("GET", "/m/gen/a.png"),
@@ -323,6 +325,15 @@ class TokenTest(ServerCase):
         code, h, _ = self.req("POST", "/api/logout", {})
         self.assertEqual(code, 204)
         self.assertIn("Max-Age=0", h["set-cookie"])
+
+    def test_sign_in_page_redirects(self):
+        """Launch UI: signed out, / goes to /login; signed in, /login goes back to the app."""
+        value = self.req("POST", "/api/login", {"token": TOKEN})[1]["set-cookie"].split(";")[0]
+        self.assertEqual(self.req("GET", "/", headers={"Cookie": value})[0], 200)
+        code, h, _ = self.req("GET", "/login", headers={"Cookie": value})
+        self.assertEqual((code, h.get("location")), (302, "/"))
+        code, h, _ = self.req("GET", "/", headers={"Cookie": "ml_session=" + "0" * 64})
+        self.assertEqual((code, h.get("location")), (302, "/login"))
 
     def test_wrong_token_is_delayed_and_rate_limited(self):
         t0 = time.monotonic()

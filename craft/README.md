@@ -7,9 +7,9 @@ own container; YourContent does not include their source and does not use their 
 
 | recipe | app | what it makes |
 |---|---|---|
-| `photo.grade` | LightCraft | a look on one photo (derived from the brand kit's colours, a preset, or explicit develop values) -> JPEG/PNG |
+| `photo.grade` | LightCraft | a look on one photo (derived from the brand kit's colors, a preset, or explicit develop values) -> JPEG/PNG |
 | `photo.finish` | PhotoCraft | crop to 1:1 / 4:5 / 9:16 / 1.91:1 around a focus point, resize, curves, vibrance, warmth -> JPEG + layered PSD |
-| `video.titlecard` | EffectCraft | animated title card in the brand kit's colours and fonts, with its logo and handle, over a still or text-only with alpha (ProRes 4444) |
+| `video.titlecard` | EffectCraft | animated title card in the brand kit's colors and fonts, with its logo and handle, over a still or text-only with alpha (ProRes 4444) |
 | `video.reel` | FilmCraft | stills and clips in order, fill-frame, dissolves, captions, a music file, loudness -> H.264 MP4 + cover |
 
 Every recipe renders only: nothing is posted or sent.
@@ -40,16 +40,16 @@ browser / agent                  app container (medialab/)                 craft
   under digit-free names (EffectCraft reads `page_07.jpg` as an image sequence), and copies back only whitelisted
   output names.
 - **Provenance carries through** (`medialab/provenance.py`). Each output gets a sidecar whose inputs are its job's
-  inputs: the worst licence wins (non-commercial beats unknown beats commercial), an upload with no sidecar counts as
+  inputs: the worst license wins (non-commercial beats unknown beats commercial), an upload with no sidecar counts as
   "rights not checked", and a text-only title card has no restricting input. The sidecar's `tool` names the app, its
-  licence and commit. Outputs chain: a graded photo can be the background of a title card, which can be an item in a
-  reel, and the licence follows.
+  license and commit. Outputs chain: a graded photo can be the background of a title card, which can be an item in a
+  reel, and the license follows.
 - **Brand kits.** A request carries `brand: {colors, fonts, logo, handle}` (or `brand_kit: <id>` when this build has
   `medialab/brandkits.py`). `craft_spec.brand_kit()` validates the fields the recipes use and fills gaps from a neutral
   kit. Fonts are family names; put the matching TTF/OTF files in `DATA/craft/fonts/` (mounted read-only into the
   sandbox), otherwise the apps fall back to their built-in Inter.
 - **AI masks are off.** LightCraft can select objects with Meta's SAM 3, whose weights are under the SAM License (a
-  custom licence, not open source). Nothing loads it unless `YOURCONTENT_CRAFT_AI_MASKS=1` is set and
+  custom license, not open source). Nothing loads it unless `YOURCONTENT_CRAFT_AI_MASKS=1` is set and
   `YOURCONTENT_CRAFT_SAM3_DIR` names a folder holding the model you downloaded yourself; only then is that folder
   mounted read-only into LightCraft's sandbox. No recipe uses masks yet.
 
@@ -60,7 +60,7 @@ docker compose --profile craft up -d --build     # builds the four apps from sou
 ```
 
 The image (`craft/Dockerfile`) clones each app at a reviewed commit, builds only its CLI (`cargo build --release
---locked -p <app>-cli`), and copies the licences, NOTICE files and a crate/licence list into
+--locked -p <app>-cli`), and copies the licenses, NOTICE files and a crate/licence list into
 `/usr/share/licenses/<app>/`. Bubblewrap inside Docker needs user namespaces, so the compose service relaxes the
 default seccomp/AppArmor profiles and `/proc` masking for this container only (it still runs as a non-root user, with
 no capabilities, a read-only root filesystem and no network).
@@ -96,6 +96,6 @@ Without Docker: build the four CLIs yourself, then `CRAFT_BIN_DIR=<folder> pytho
 | `recipes.py` | the four recipes: the exact MCP calls per app |
 | `mcp_client.py` | stdio MCP client with per-call deadlines (a timeout kills the sandbox); the sandbox environment |
 | `craft-mcp` | the bubblewrap wrapper |
-| `Dockerfile`, `build-app.sh` | the craft image: four pinned source builds, licences, bubblewrap, non-root |
+| `Dockerfile`, `build-app.sh` | the craft image: four pinned source builds, licenses, bubblewrap, non-root |
 | `../medialab/craft_spec.py` | recipes, params, brand kits, refs: shared by the app and the runner |
 | `../medialab/craft_routes.py` | the app's routes and health |

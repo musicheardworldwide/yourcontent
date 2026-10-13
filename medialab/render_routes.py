@@ -6,6 +6,10 @@
     POST /api/brandkits               create a kit (409 if the id exists)
     POST /api/brandkits/<id>          replace a kit (404 if it doesn't exist)
     POST /api/brandkits/<id>/delete   delete a kit
+    GET  /api/posts/thumb?kit=&style=&format=&palette=
+                                      a style's gallery card: 320 px, drawn in the kit with sample words, kept in
+                                      DATA/cache/thumbs (keyed on style version + kit + format + palette); the page
+                                      adds v= (its hash of the kit and style version) so the browser may keep it a day
     POST /api/posts/render            draw a post; preview=true answers the image, otherwise it is saved to the
                                       "lab" root with a sidecar and the answer is JSON. Previews 480 px wide or less
                                       are kept in DATA/cache/thumbs, keyed on the style's version (X-Thumb-Cache)
@@ -38,6 +42,13 @@ FALLBACK_FORMATS = ["1:1", "4:5", "9:16", "1.91:1"]
 THUMB_MAX_W = 480        # previews this wide or narrower (the gallery's 320 px) are cached on disk
 THUMB_MAX = 3000         # files kept in DATA/cache/thumbs (about 50 KB each)
 THUMB_SCHEMA = 1
+THUMB_W = 320            # the composer's style cards
+SAMPLE = {"kicker": "New this week", "headline": "Your headline goes here",
+          "body": "One or two short sentences about the post, in your own words.", "detail": "Sat 10:00",
+          "label": ""}
+PALETTES = ("brand", "invert", "own")
+LOCAL_STYLES = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "render", "styles",
+                            "styles.json")
 _thumb_writes = 0
 
 
@@ -213,15 +224,63 @@ def render_post(srv, h, body: dict) -> None:
                        "warnings": warnings + provenance.warnings(agg, n_up)})
 
 
+def local_styles(path: str = LOCAL_STYLES) -> list[dict]:
+    """The style list from this checkout's render/styles/styles.json, so the composer can still show swatch cards
+    (each style's own colours and font) when the render service is off. [] when the file isn't there (the app's
+    container doesn't carry it) or can't be read."""
+    try:
+        with open(path, encoding="utf-8") as f:
+            doc = json.load(f)
+        return [{"id": s["id"], "name": s["name"], "kind": s.get("kind", "text"), "tags": s.get("tags", ""),
+                 "slides": s.get("slides", 1), "version": "", "own": s.get("own") or {}, "fonts": s.get("fonts") or {}}
+                for s in doc.get("styles", []) if isinstance(s, dict) and s.get("id") and s.get("name")]
+    except (OSError, ValueError, KeyError, TypeError, AttributeError):
+        return []
+
+
+def thumb(srv, h, q: dict) -> None:
+    """GET /api/posts/thumb: one style card drawn small in a kit with the sample words, cached on disk."""
+    kit = brandkits.get(q.get("kit") or "")
+    style = q.get("style") or ""
+    if not brandkits.STYLE_RE.fullmatch(style):
+        raise srv.HTTPError(400, "pick a style")
+    fmt = q.get("format") or "4:5"
+    if fmt not in ("1:1", "4:5", "9:16", "1.91:1"):
+        raise srv.HTTPError(400, "format must be 1:1, 4:5, 9:16 or 1.91:1")
+    palette = q.get("palette") or "brand"
+    if palette not in PALETTES:
+        raise srv.HTTPError(400, "palette must be brand, invert or own")
+    brand = brandkits.render_brand(kit)
+    text = dict(SAMPLE, handle=kit.get("handle") or "@yourbrand")
+    spec = {"style": style, "brand": brand, "images": [], "text": text, "format": fmt, "type": "png",
+            "palette": palette, "safe_area": True, "mark": True, "slide": 1, "width": THUMB_W}
+    key = _thumb_key(spec, {k: v for k, v in kit.items() if k != "logo"}, [])
+    headers = {"Cache-Control": "private, max-age=86400"}
+    hit = _thumb_get(key)
+    if hit is not None:
+        srv._send_raw(h, 200, hit, "image/png", {**headers, "X-Thumb-Cache": "hit"})
+        return
+    data, _, ctype = render_client.render(spec)
+    if key and ctype == "image/png":
+        _thumb_put(key, data)
+    srv._send_raw(h, 200, data, ctype, {**headers, "X-Thumb-Cache": "miss" if key else "off"})
+
+
 def routes(srv):
     def r_styles(h, m):
         try:
             doc = dict(render_client.styles())
             doc["render"] = {"ok": True, "missing": []}
+            own = {s["id"]: s for s in local_styles()}
+            doc["styles"] = [dict({k: own[s.get("id")][k] for k in ("own", "fonts")} if s.get("id") in own else {},
+                                  **s) for s in doc.get("styles", [])]
         except (RenderOff, RenderFailed) as exc:
-            doc = {"styles": [], "fonts": [], "formats": FALLBACK_FORMATS,
+            doc = {"styles": local_styles(), "fonts": [], "formats": FALLBACK_FORMATS,
                    "render": {"ok": False, "missing": [store.scrub(str(exc))]}}
         srv._json(h, 200, doc)
+
+    def r_thumb(h, m):
+        thumb(srv, h, srv._query(h))
 
     def r_health(h, m):
         srv._json(h, 200, render_client.feature())
@@ -254,5 +313,6 @@ def routes(srv):
         ("POST", r"/api/brandkits", r_kit_create),
         ("POST", r"/api/brandkits/([^/?#]+)", r_kit_save),
         ("POST", r"/api/brandkits/([^/?#]+)/delete", r_kit_delete),
+        ("GET", r"/api/posts/thumb", r_thumb),
         ("POST", r"/api/posts/render", r_render),
     ]

@@ -2,16 +2,16 @@
 
 The render service draws posts with 19 font families (29 files). Every one may be redistributed and embedded:
 18 are under the SIL Open Font License 1.1 and one (Permanent Marker) under the Apache License 2.0. Neither
-licence restricts the pictures made with the fonts, so fonts never make a post non-commercial.
+license restricts the pictures made with the fonts, so fonts never make a post non-commercial.
 
 The files are **not** in this repository. `fetch_fonts.py` downloads them while the image is built, from the
 official Google Fonts repository at one pinned commit (`commit` in `fonts.json`), checks every file against the
-sha256 in `fonts.json` and stops the build on any mismatch. The licence text of each family is fetched the same way
+sha256 in `fonts.json` and stops the build on any mismatch. The license text of each family is fetched the same way
 and installed next to the fonts (`/opt/fonts/licences/` in the image), as OFL 1.1 asks.
 
-Checked 2026-10-10 against each family's `METADATA.pb` (`license:` field) and licence file at that commit.
+Checked 2026-10-10 against each family's `METADATA.pb` (`license:` field) and license file at that commit.
 
-| Family | Licence | Files (weight axis) | Upstream folder |
+| Family | License | Files (weight axis) | Upstream folder |
 |---|---|---|---|
 | Archivo Black | OFL-1.1 | Regular (400) | `ofl/archivoblack` |
 | Bebas Neue | OFL-1.1 | Regular (400) | `ofl/bebasneue` |
@@ -36,5 +36,5 @@ Checked 2026-10-10 against each family's `METADATA.pb` (`license:` field) and li
 A brand kit may name any of these families (the editor lists them). A family the service does not ship falls back
 to the browser's generic serif, sans-serif, monospace or cursive face.
 
-To add a family: add its files and licence to `fonts.json` with their upstream paths and sha256 (a family is only
-added when its licence allows redistribution), then rebuild the image.
+To add a family: add its files and license to `fonts.json` with their upstream paths and sha256 (a family is only
+added when its license allows redistribution), then rebuild the image.

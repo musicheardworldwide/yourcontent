@@ -192,17 +192,8 @@ function remember(it) { if (it && it.ref) S.byKey.set(refKey(it.ref), it); }
 
 function needLogin() {
   if (!S.config || !S.config.auth) return;
-  $("login").hidden = false;
-  // sign in first: the welcome comes back after the page reloads signed in
-  if ($("notice").open) { S.welcomeLater = true; $("notice").close(); }
-}
-async function login(e) {
-  e.preventDefault();
-  try {
-    await api("POST", "/api/login", {token: $("token").value});
-    $("token").value = "";
-    location.reload();
-  } catch (err) { fail("loginstatus", err); }
+  // the sign-in page (/login) brings you back here once you're in
+  if (!S.toLogin) { S.toLogin = true; location.assign("/login?next=" + encodeURIComponent(location.hash || "")); }
 }
 
 /* ------------------------------------------------------------------ health */
@@ -227,6 +218,8 @@ function renderHealth(hh) {
   dot.classList.toggle("ok", ok);
   const t = ok ? "ComfyUI is ready" : (hh ? "ComfyUI not reachable; editing and export still work" : "Checking ComfyUI…");
   dot.title = t; dot.setAttribute("aria-label", t);
+  $("dotlabel").textContent = ok ? "GPU ready" : (hh ? "GPU offline" : "Checking GPU…");
+  window.dispatchEvent(new CustomEvent("medialab:health", {detail: hh}));
   const vars = (hh && hh.features && hh.features.picture && hh.features.picture.variants) || {};
   const sel = $("model");
   for (const o of sel.options) {
@@ -254,7 +247,9 @@ function setTab(t) {
   if (!["picture", "clip", "cut"].includes(t)) t = "picture";
   S.tab = t;
   if (t !== "picture") S.card = t;
-  document.body.className = "tab-" + S.tab + " card-" + S.card;
+  const cl = document.body.classList;  // keep the shell's own classes (side-min)
+  for (const c of [...cl]) if (/^(tab|card)-/.test(c)) cl.remove(c);
+  cl.add("tab-" + S.tab, "card-" + S.card);
   for (const b of document.querySelectorAll(".ptabs button, .ctabs button")) {
     const on = b.closest(".ptabs") ? b.dataset.tab === S.tab : b.dataset.tab === S.card;
     b.classList.toggle("on", on);
@@ -269,6 +264,7 @@ async function loadRecent() {
   try { S.recent = await api("GET", "/api/recent?limit=60"); } catch (e) { return; }
   for (const it of S.recent) remember(it);
   renderRecent();
+  window.dispatchEvent(new CustomEvent("medialab:recent"));
 }
 function thumbEl(it, onPick, withRef) {
   const vid = it.type === "video";
@@ -345,7 +341,7 @@ async function showInfo(it) {
   const rows = [
     ["File", inf.name], ["Made", (inf.created || "").replace("T", " ").replace("Z", " UTC")],
     ["Size", pr.w ? pr.w + " × " + pr.h : ""], ["Length", pr.seconds ? fmt2(pr.seconds) + " s" : ""],
-    ["Licence", ok === false ? "Non-commercial use only" : ok === true ? "Commercial use OK" : "Unknown: check your rights"],
+    ["License", ok === false ? "Non-commercial use only" : ok === true ? "Commercial use OK" : "Unknown: check your rights"],
     ["Prompt", inf.prompt || ""], ["Seed", inf.seed != null ? String(inf.seed) : ""],
   ].filter(r => r[1]);
   const why = inf.restricted_by || [];
@@ -358,10 +354,10 @@ async function showInfo(it) {
 }
 function showWhy() {
   const L = S.resolved && S.resolved.licence;
-  $("infotitle").textContent = "Licence of this cut";
+  $("infotitle").textContent = "License of this cut";
   fill($("infobody"), 
     h("p", {text: L && L.commercial_ok === false ? "Something in this cut is non-commercial, so the whole cut is."
-      : "Some parts have no known licence. Make sure you have the rights."}),
+      : "Some parts have no known license. Make sure you have the rights."}),
     h("ul", {class: "why"}, ...((L && L.restricted_by) || []).map(w => h("li", {text: w}))));
   $("infodlg").showModal();
 }
@@ -402,25 +398,51 @@ async function wipe(it) {
 
 /* ------------------------------------------------------------------ first-run welcome */
 
-/* A dialog shown once per device (ml-notice-1), leading to making a post. Every way out of it (a button, Escape,
-   a click outside) counts as seen; About › Welcome screen opens it again. The tour then only starts when asked. */
+/* A three-step first-run wizard shown once per device (ml-notice-1): what to do first, is the GPU ready, and the
+   responsibility notice. Every way out of it (a button, Escape, a click outside) counts as seen; Settings › Welcome
+   opens it again. The tour then only starts when asked. */
 function welcome() {
   const dlg = $("notice");
+  const N = 3;
+  let step = 1, goal = lsGet("ml-goal") || (window.MediaLabPosts ? "posts" : "make");
   const go = view => {
     dlg.close();
     if (view && window.MediaLabStudio) window.MediaLabStudio.show(view);
+    if (view === "make") { setTab("picture"); $("prompt").focus(); }
   };
-  const hasPosts = !!window.MediaLabPosts;
-  $("noticeoktext").textContent = hasPosts ? "Make a post" : "Get started";
-  dlg.addEventListener("close", () => { if (S.welcomeLater) return; lsSet("ml-notice-1", "1"); if (!lsGet("ml-tour-1")) lsSet("ml-tour-1", "later"); });
-  $("noticeok").addEventListener("click", () => go(hasPosts ? "posts" : null));
-  $("noticemake").addEventListener("click", () => { go("make"); setTab("picture"); $("prompt").focus(); });
+  const gpu = () => {
+    const hh = S.health, ok = !!(hh && hh.comfy && hh.comfy.ok);
+    const el = $("wizgpu");
+    el.className = "gpucheck " + (ok ? "ok" : hh ? "bad" : "");
+    el.textContent = ok ? "Your GPU is connected and ready." : hh ? "ComfyUI isn't reachable yet. Start it, then press Check again in Settings."
+      : "Checking…";
+  };
+  const paint = () => {
+    for (let k = 1; k <= N; k++) $("wiz" + k).hidden = k !== step;
+    $("wizstep").textContent = "Step " + step + " of " + N;
+    $("wizbar").style.width = (step / N * 100) + "%";
+    $("wizback").hidden = step === 1;
+    $("noticeoktext").textContent = step < N ? "Continue" : "Let's go";
+    for (const b of dlg.querySelectorAll(".goal")) b.setAttribute("aria-pressed", String(b.dataset.goal === goal));
+    if (step === 2) gpu();
+  };
+  for (const b of dlg.querySelectorAll(".goal")) {
+    if (b.dataset.goal === "posts" && !window.MediaLabPosts) b.hidden = true;
+    if (b.dataset.goal === "calendar" && !window.MediaLabCalendar) b.hidden = true;
+    b.addEventListener("click", () => { goal = b.dataset.goal; lsSet("ml-goal", goal); step = 2; paint(); });
+  }
+  window.addEventListener("medialab:health", () => { if (dlg.open && step === 2) gpu(); });
+  dlg.addEventListener("close", () => { if (!lsGet("ml-tour-1")) lsSet("ml-tour-1", "later"); lsSet("ml-notice-1", "1"); });
+  $("wizback").addEventListener("click", () => { step = Math.max(1, step - 1); paint(); });
+  $("noticeok").addEventListener("click", () => { if (step < N) { step++; paint(); } else go(goal); });
   $("noticetour").addEventListener("click", () => { go(null); if (window.MediaLabTour) window.MediaLabTour.start(); });
   $("noticetour").hidden = !$("tourbtn");
-  $("welcomeagain").addEventListener("click", () => { $("about").close(); if (!dlg.open) dlg.showModal(); });
+  const open = () => { step = 1; paint(); if (!dlg.open) dlg.showModal(); };
+  $("welcomeagain").addEventListener("click", () => { $("about").close(); open(); });
   $("abouttour").addEventListener("click", () => { $("about").close(); if (window.MediaLabTour) window.MediaLabTour.start(); });
   $("abouttour").hidden = !window.MediaLabTour;
-  if (!lsGet("ml-notice-1") && !dlg.open && $("login").hidden) dlg.showModal();
+  window.MediaLabWelcome = {open};
+  if (!lsGet("ml-notice-1") && !dlg.open) open();
 }
 
 /* ------------------------------------------------------------------ chips for the picture's choices */
@@ -1122,7 +1144,7 @@ function licenceText(L) {
   const parts = [];
   if (L.commercial_ok === false) parts.push(L.most_restrictive === "qwen-image-nc" ? "Contains Qwen-Image 2.1 output: non-commercial use only." : "Non-commercial use only.");
   if (L.uploads > 0) parts.push("Includes uploads: make sure you have the rights.");
-  else if (L.commercial_ok == null) parts.push("Some parts have an unknown licence.");
+  else if (L.commercial_ok == null) parts.push("Some parts have an unknown license.");
   return parts.length ? icon + parts.join(" · ") : "";
 }
 function renderExport() {
@@ -1204,7 +1226,6 @@ function bind() {
   for (const d of document.querySelectorAll("dialog")) d.addEventListener("click", e => { if (e.target === d) d.close(); });
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", welcome); else welcome();
   chipsFor($("size"), $("sizechips")); chipsFor($("model"), $("modelchips")); renderSeed();
-  on("login", "submit", login);
   // tabs
   for (const b of document.querySelectorAll(".ptabs button, .ctabs button")) {
     b.addEventListener("click", () => setTab(b.dataset.tab));
@@ -1360,5 +1381,15 @@ async function boot() {
     pid && /^p_[0-9a-f]{12}$/.test(pid) ? openProject(pid) : null]);
   resumeJobs();
   setInterval(() => loadHealth(false), 30000);
+  window.dispatchEvent(new CustomEvent("medialab:ready"));
 }
+/* what Home, Library and Settings (home.js) read: the app's own state and actions, never a copy */
+window.MediaLabApp = {
+  api, h, fill, lsGet, lsSet, nameOf, refKey,
+  config: () => S.config, health: () => S.health, recent: () => S.recent || [],
+  loadRecent, recheck: () => loadHealth(true),
+  open: it => { if (window.MediaLabStudio) window.MediaLabStudio.show("create"); show(it); },
+  make: tab => { if (window.MediaLabStudio) window.MediaLabStudio.show("create"); setTab(tab); if (tab === "picture") $("prompt").focus(); },
+  about: () => { renderHealth(S.health); $("about").showModal(); },
+};
 boot();

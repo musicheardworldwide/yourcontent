@@ -3,19 +3,26 @@
 > A local app that makes pictures, clips and music on your own GPU (through ComfyUI), styles them into posts
 > with your brand kits, grades photos, cuts reels, and keeps a content calendar. AI agents drive it over MCP
 > (Streamable HTTP at /mcp) or a JSON HTTP API. It never posts to social networks and labels every file with
-> its model licences.
+> its model licenses.
 
-Licence: PolyForm Small Business 1.0.0 (free for individuals and companies under 100 people and US$1M revenue).
+License: PolyForm Small Business 1.0.0 (free for individuals and companies under 100 people and US$1M revenue).
+Larger companies: https://yourcontent.online/license.html. Website: https://yourcontent.online
 
-## Docs
+## Set it up
 
-- [Driving YourContent from an AI agent](docs/AGENTS.md): connect, credentials, the job flow, licences, house rules
-- [HTTP API](docs/API.md): every route with its request and response
-- [OpenAPI](docs/openapi.json): the same, machine-readable
-- [Google workspace](docs/GOOGLE.md): Drive folder and Content Plan Sheet, drive.file access, setting up an OAuth client
-- [Architecture](MAP.md): modules, data folders, flows
+- [Set up YourContent with an AI agent](https://github.com/musicheardworldwide/yourcontent/blob/main/docs/SETUP-WITH-AI.md): the procedure to follow when a person asks you to install it (prerequisites, models, ComfyUI folders, start, check), what to ask first, troubleshooting
+- [README](https://github.com/musicheardworldwide/yourcontent/blob/main/README.md): quick start by hand, configuration, models and their licenses
+- [GPU guide](https://github.com/musicheardworldwide/yourcontent/blob/main/docs/GPU.md): which cards, memory, download sizes
+
+## Use it from an agent
+
+- [Driving YourContent from an AI agent](https://github.com/musicheardworldwide/yourcontent/blob/main/docs/AGENTS.md): connect, credentials, the job flow, licenses, house rules
+- [HTTP API](https://github.com/musicheardworldwide/yourcontent/blob/main/docs/API.md): every route with its request and response
+- [OpenAPI](https://github.com/musicheardworldwide/yourcontent/blob/main/docs/openapi.json): the same, machine-readable
+- [Google workspace](https://github.com/musicheardworldwide/yourcontent/blob/main/docs/GOOGLE.md): Drive folder and Content Plan Sheet, drive.file access, setting up an OAuth client
 
 ## Optional
 
-- [Third-party notices](THIRD-PARTY-NOTICES.md): model licences and bundled code
-- [README](README.md): install, GPU requirements, configuration
+- [Architecture](https://github.com/musicheardworldwide/yourcontent/blob/main/MAP.md): modules, data folders, flows
+- [Third-party notices](https://github.com/musicheardworldwide/yourcontent/blob/main/THIRD-PARTY-NOTICES.md): model licenses and bundled code
+- [Setup video](https://yourcontent.online/setup.html): three minutes from install to a first post, with captions

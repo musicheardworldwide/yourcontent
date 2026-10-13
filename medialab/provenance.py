@@ -158,7 +158,7 @@ def _input_line(i: dict, ok: bool | None, table: dict) -> str:
         lid = _most_restrictive(cands, table) if cands else None
     if i.get("missing"):
         what = "not for commercial use (recorded before it went missing)" if ok is False else \
-            "licence unknown (recorded before it went missing)"
+            "license unknown (recorded before it went missing)"
         return f"{label} {name} (missing): {what}"
     if lid:
         return f"{label} {name}: {_short(lid, table)}"
@@ -229,7 +229,7 @@ def warnings(agg: dict, n_uploads: int) -> list[str]:
     if n_uploads:
         out.append("Includes uploads: make sure you have the rights.")
     if agg.get("commercial_ok") is None and not n_uploads:
-        out.append("Licence unknown for part of this: check before commercial use.")
+        out.append("License unknown for part of this: check before commercial use.")
     return out
 
 
@@ -246,5 +246,5 @@ def mp4_comment(agg: dict, name: str) -> str:
     else:
         lic = f"unknown ({text_of})"
     safe = re.sub(r"[^A-Za-z0-9._-]", "", str(name or ""))[:80]
-    text = f"YourContent export {safe}; licence: {lic}"
+    text = f"YourContent export {safe}; license: {lic}"
     return text[:255]

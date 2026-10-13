@@ -5,9 +5,15 @@ first write, mode 0700; atomic temp + os.replace, previous save kept as entries.
 PURE: check_id, parse_when, clean_fields, in_range, escape_text, fold, to_ics, to_row, from_row.
 
 File: {"schema": "media-lab/calendar@1", "entries": [entry, ...]}. An entry:
-    {"id": "c_<10hex>", "rev": 1, "when": "2026-10-12" | "2026-10-12T09:30" | "2026-10-12T09:30-07:00",
+    {"id": "c_<10hex>", "rev": 1, "when": "2026-10-12" | "2026-10-12T09:30" | "2026-10-12T09:30-07:00" | None,
      "duration_min": 0, "channel": "instagram_reel", "title": "...", "caption": "...", "status": "idea",
-     "project": "p_<12hex>" | None, "asset": {"root", "name"} | None, "created": iso, "updated": iso}
+     "project": "p_<12hex>" | None, "asset": {"root", "name"} | None, "created": iso, "updated": iso,
+     "history": [{"status", "note", "at": iso UTC, "by": "you" | agent name}, ...]}
+`when` None (sent as null or "") is an unscheduled entry: it sits in the page's drafts rail, is listed only when
+no range is asked for (or with unscheduled=True), and is left out of the iCalendar feed.
+`history` is read-only: create adds the first record, and an update adds one when the status changes or a note
+is sent (the approval trail). At most HISTORY_MAX records are kept (the oldest drop off); a note is at most
+MAX_NOTE characters (longer raises, never cut). An entry stored before history existed reads as [].
 Each entry has its own rev, so two tabs editing two different entries never collide. A write naming a stale
 rev raises Conflict(current entry). `project` and `asset` are checked for shape only: a linked cut or file
 may be deleted later and the entry keeps the link (the page shows it as gone).
@@ -30,13 +36,15 @@ STATUSES = ("idea", "draft", "ready", "posted", "skipped")
 # A Google Sheet "Content Plan" (later) uses exactly these columns, in this order.
 CALENDAR_COLUMNS = ["id", "when", "channel", "title", "caption", "status", "project", "asset", "updated"]
 EDITABLE = ("when", "duration_min", "channel", "title", "caption", "status", "project", "asset")
-READ_ONLY = ("id", "rev", "created", "updated")
+READ_ONLY = ("id", "rev", "created", "updated", "history")
 ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,39}$")   # NAME_RE-safe, no dots (it ends up in a UID)
 DATE_RE = re.compile(r"^(\d{4})-(\d{2})-(\d{2})$")
 WHEN_RE = re.compile(r"^(\d{4}-\d{2}-\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?(Z|[+-]\d{2}:?\d{2})?$")
 MAX_CHANNEL, MAX_TITLE, MAX_CAPTION = 40, 120, 2200
 MAX_DURATION = 7 * 24 * 60
 MAX_ENTRIES = 2000
+HISTORY_MAX, MAX_NOTE, MAX_BY = 50, 500, 60
+OWNER = "you"   # history's `by` for the owner's session; an agent token writes its agent's name
 DEFAULT_TITLE = "Untitled"
 PRODID = "-//YourContent//Content calendar//EN"
 ICS_STATUS = {"posted": "CONFIRMED", "skipped": "CANCELLED"}   # everything else is TENTATIVE
@@ -104,7 +112,10 @@ def format_when(kind: str, value: date | datetime) -> str:
     return f"{s}{sign}{mins // 60:02d}:{mins % 60:02d}"
 
 
-def clean_when(when: object) -> str:
+def clean_when(when: object) -> str | None:
+    """The stored form, or None for "" / None (an unscheduled entry)."""
+    if when is None or (isinstance(when, str) and not when.strip()):
+        return None
     return format_when(*parse_when(when))
 
 
@@ -209,13 +220,41 @@ def clean_fields(fields: object, partial: bool) -> dict:
 
 
 def in_range(entry: dict, from_: str | None, to: str | None) -> bool:
-    """from_ and to are inclusive days (YYYY-MM-DD) or None."""
+    """from_ and to are inclusive days (YYYY-MM-DD) or None. An unscheduled entry is in only the open range."""
+    if not entry.get("when"):
+        return from_ is None and to is None
     d = day_of(str(entry.get("when") or ""))
     return (from_ is None or d >= from_) and (to is None or d <= to)
 
 
 def sort_key(entry: dict) -> tuple:
     return (str(entry.get("when") or ""), str(entry.get("id") or ""))
+
+
+# --------------------------------------------------------------------------------------------- pure: history
+
+def clean_note(v: object) -> str:
+    """A status note: multiline text, at most MAX_NOTE characters (longer raises)."""
+    return _clean_text(v, "note", MAX_NOTE, multiline=True)
+
+
+def clean_by(v: object) -> str:
+    """Who made a change: one line, at most MAX_BY characters; empty means the owner."""
+    s = " ".join(str(v or "").split())[:MAX_BY]
+    return s or OWNER
+
+
+def history_of(entry: dict) -> list[dict]:
+    """The entry's history, tolerant of files written before it existed (missing or malformed -> [] / dropped)."""
+    h = entry.get("history")
+    if not isinstance(h, list):
+        return []
+    return [r for r in h if isinstance(r, dict) and r.get("status") in STATUSES][-HISTORY_MAX:]
+
+
+def append_history(history: list[dict], status: str, note: str, by: str, at: str) -> list[dict]:
+    """A new list with {status, note, at, by} added, capped to the last HISTORY_MAX records."""
+    return (list(history) + [{"status": status, "note": note, "at": at, "by": clean_by(by)}])[-HISTORY_MAX:]
 
 
 # --------------------------------------------------------------------------------------------- IO: file
@@ -235,7 +274,10 @@ def _load() -> list[dict]:
                          "fix or move it") from None
     if not isinstance(doc, dict) or not isinstance(doc.get("entries"), list):
         raise Unreadable("the calendar file (calendar/entries.json in the data folder) isn't a calendar")
-    return [e for e in doc["entries"] if isinstance(e, dict) and isinstance(e.get("id"), str)]
+    entries = [e for e in doc["entries"] if isinstance(e, dict) and isinstance(e.get("id"), str)]
+    for e in entries:   # migrate: entries saved before history existed read as []
+        e["history"] = history_of(e)
+    return entries
 
 
 def _save(entries: list[dict]) -> None:
@@ -267,14 +309,18 @@ def _check_rev(rev: object, current: dict) -> None:
 
 # --------------------------------------------------------------------------------------------- IO: CRUD
 
-def list_entries(from_: str | None = None, to: str | None = None) -> list[dict]:
-    """Entries on days from_..to (inclusive, either may be None), in time order."""
+def list_entries(from_: str | None = None, to: str | None = None, unscheduled: bool = False) -> list[dict]:
+    """Entries on days from_..to (inclusive, either may be None), in time order. unscheduled=True lists only
+    the entries with no date (and ignores the range)."""
     if from_ is not None:
         check_day(from_, "from")
     if to is not None:
         check_day(to, "to")
     with _lock:
         entries = _load()
+    if unscheduled:
+        return sorted((e for e in entries if not e.get("when")), key=lambda e: (str(e.get("created") or ""),
+                                                                             str(e.get("id") or "")))
     return sorted((e for e in entries if in_range(e, from_, to)), key=sort_key)
 
 
@@ -285,9 +331,11 @@ def get(eid: str) -> dict:
     return entries[_find(entries, eid)]
 
 
-def create(fields: dict, eid: str | None = None) -> dict:
-    """A new entry (rev 1). eid lets a sheet import keep its row's id; normally one is made up."""
+def create(fields: dict, eid: str | None = None, note: object = None, by: object = OWNER) -> dict:
+    """A new entry (rev 1). eid lets a sheet import keep its row's id; normally one is made up. The history
+    starts with the entry's status, the optional note and who made it."""
     clean = clean_fields(fields, partial=False)
+    note = clean_note(note)
     now = store.now_iso()
     with _lock:
         entries = _load()
@@ -301,21 +349,27 @@ def create(fields: dict, eid: str | None = None) -> dict:
             eid = new_id()
             while eid in ids:
                 eid = new_id()
-        entry = {"id": eid, "rev": 1, **clean, "created": now, "updated": now}
+        entry = {"id": eid, "rev": 1, **clean, "created": now, "updated": now,
+                 "history": append_history([], clean["status"], note, by, now)}
         entries.append(entry)
         _save(entries)
     return entry
 
 
-def update(eid: str, rev: int, patch: dict) -> dict:
-    """Merge the given fields into the entry and bump its rev. Raises Conflict(current) on a stale rev."""
+def update(eid: str, rev: int, patch: dict, note: object = None, by: object = OWNER) -> dict:
+    """Merge the given fields into the entry and bump its rev. Raises Conflict(current) on a stale rev.
+    A status change, or a note, adds a history record by `by`."""
     check_id(eid)
     clean = clean_fields(patch, partial=True)
+    note = clean_note(note)
     with _lock:
         entries = _load()
         i = _find(entries, eid)
         _check_rev(rev, entries[i])
-        entry = {**entries[i], **clean, "rev": int(entries[i]["rev"]) + 1, "updated": store.now_iso()}
+        now = store.now_iso()
+        entry = {**entries[i], **clean, "rev": int(entries[i]["rev"]) + 1, "updated": now}
+        if note or ("status" in clean and clean["status"] != entries[i].get("status")):
+            entry["history"] = append_history(entry["history"], entry["status"], note, by, now)
         entries[i] = entry
         _save(entries)
     return entry
@@ -417,7 +471,8 @@ def to_ics(entries: list[dict], cal_name: str, now: datetime) -> str:
     lines = ["BEGIN:VCALENDAR", "VERSION:2.0", f"PRODID:{PRODID}", "CALSCALE:GREGORIAN", "METHOD:PUBLISH",
              f"X-WR-CALNAME:{escape_text(cal_name)}"]
     for e in sorted(entries, key=sort_key):
-        lines += _vevent(e, stamp)
+        if e.get("when"):   # an unscheduled entry has no place in a calendar app
+            lines += _vevent(e, stamp)
     lines.append("END:VCALENDAR")
     return "".join(fold(line) + "\r\n" for line in lines)
 

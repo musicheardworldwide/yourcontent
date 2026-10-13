@@ -9,17 +9,20 @@
      text: "Make pictures, clips and music on your own GPU, turn them into posts and reels in your brand, plan " +
            "them on a calendar, and let an AI agent help. It never posts for you, and it sends nothing to an " +
            "outside service unless you connect one."},
-    {view: "make", spot: ["#dot"], title: "Is everything ready?",
-     text: "Green means ComfyUI is up. Open About to see each feature's status: a missing model names the file " +
-           "and the get-models command that fetches it."},
+    {view: "home", need: "MediaLabHome", spot: [".checklist", ".quick"], title: "Home",
+     text: "Start here: one tap to a new post, picture, clip or reel, what's next on your calendar, and a short " +
+           "setup list that ticks itself off."},
+    {view: "settings", need: "MediaLabSettings", spot: [".setgrid"], title: "Is everything ready?",
+     text: "The GPU light at the bottom of the sidebar is green when ComfyUI is up. Settings shows each feature's " +
+           "status: a missing model names the file and the command that fetches it."},
     {view: "make", tap: "#ptabs [data-tab=picture]", spot: ["#pane-picture"], title: "Make a picture",
      text: "Describe it and press Generate. Add up to 6 reference pictures to keep a face, a product or a room " +
-           "the same. Every file is labelled with the licence of the model that made it."},
+           "the same. Every file is labeled with the license of the model that made it."},
     {view: "make", spot: ["#ptabs", "#pane-clip"], title: "Clips and the cut",
      text: "Animate a picture into a 3–5 second clip, extend it, then arrange stills and clips in the Cut with " +
            "music, and export one MP4 for Reels, feed, square or wide."},
     {view: "posts", need: "MediaLabPosts", spot: [".mlp-gallery"], title: "Posts in your brand",
-     text: "Make a brand kit once (colours, fonts, logo, handle) and type your words: every style is drawn in " +
+     text: "Make a brand kit once (colors, fonts, logo, handle) and type your words: every style is drawn in " +
            "your kit as you type. Open one to see it large, then render and save it. Photo grading and reel " +
            "recipes are under the gallery."},
     {view: "calendar", need: "MediaLabCalendar", title: "Plan it",
@@ -29,8 +32,12 @@
      text: "Connect Google to get a Drive folder and a Content Plan Sheet that YourContent keeps in sync. Then " +
            "make a setup prompt for your AI agent: it can make and schedule, and never posts. The panel says what " +
            "else it can do on this install."},
-    {view: "make", title: "That's the tour",
-     text: "Run it again any time from the Tour button. The guides are in the repository's docs folder."},
+    {view: "library", need: "MediaLabLibrary", title: "Your library",
+     text: "Everything you make or upload, with filters for pictures, clips, music and license. Open one to keep " +
+           "working on it."},
+    {view: "home", title: "That's the tour",
+     text: "Run it again any time from Tour in the sidebar or from Settings. Settings › Help also opens the " +
+           "3-minute setup video."},
   ];
   let i = 0, card = null, lastSpot = null;
 

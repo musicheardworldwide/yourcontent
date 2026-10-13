@@ -434,5 +434,106 @@ class StoreTest(unittest.TestCase):
         self.assertFalse(os.path.exists(self.file))
 
 
+# --------------------------------------------------------------------------------------------- history and unscheduled
+
+class HistoryTest(unittest.TestCase):
+    def setUp(self):
+        self.r = TempRoots()
+        self.addCleanup(self.r.cleanup)
+        store.configure(self.r.config())
+        self.file = os.path.join(self.r.data, "calendar", "entries.json")
+
+    def test_append_is_pure_and_capped(self):
+        h = []
+        for i in range(calendar.HISTORY_MAX + 5):
+            h2 = calendar.append_history(h, "draft", f"n{i}", "you", f"2026-10-12T00:00:{i % 60:02d}Z")
+            self.assertEqual(len(h), min(i, calendar.HISTORY_MAX))   # the input list is never changed
+            h = h2
+        self.assertEqual(len(h), calendar.HISTORY_MAX)
+        self.assertEqual((h[0]["note"], h[-1]["note"]), ("n5", f"n{calendar.HISTORY_MAX + 4}"))
+        self.assertEqual(set(h[-1]), {"status", "note", "at", "by"})
+
+    def test_create_starts_history_and_status_change_appends(self):
+        e = calendar.create({"when": "2026-10-12", "status": "idea"})
+        self.assertEqual([(r["status"], r["note"], r["by"]) for r in e["history"]], [("idea", "", "you")])
+        self.assertRegex(e["history"][0]["at"], r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$")
+        e = calendar.update(e["id"], 1, {"title": "No status change"})
+        self.assertEqual(len(e["history"]), 1)                     # an ordinary edit adds nothing
+        e = calendar.update(e["id"], 2, {"status": "ready"}, note="Looks good  \n to me")
+        self.assertEqual((e["history"][-1]["status"], e["history"][-1]["note"]), ("ready", "Looks good  \n to me"))
+        e = calendar.update(e["id"], 3, {"status": "ready"})       # same status, no note: nothing
+        self.assertEqual(len(e["history"]), 2)
+        e = calendar.update(e["id"], 4, {}, note="Bumped to Friday")   # a note alone is recorded
+        self.assertEqual([r["status"] for r in e["history"]], ["idea", "ready", "ready"])
+        self.assertEqual(calendar.get(e["id"])["history"], e["history"])
+
+    def test_by_field(self):
+        e = calendar.create({"when": "2026-10-12"}, by="Claude")
+        self.assertEqual(e["history"][0]["by"], "Claude")
+        e = calendar.update(e["id"], 1, {"status": "posted"}, by="  Hermes \n scout ")
+        self.assertEqual(e["history"][-1]["by"], "Hermes scout")
+        e = calendar.update(e["id"], 2, {"status": "skipped"}, by="")
+        self.assertEqual(e["history"][-1]["by"], "you")
+        self.assertEqual(len(calendar.clean_by("x" * 200)), calendar.MAX_BY)
+
+    def test_cap_on_disk(self):
+        e = calendar.create({"when": "2026-10-12"})
+        for i in range(calendar.HISTORY_MAX + 3):
+            e = calendar.update(e["id"], e["rev"], {"status": ("draft", "ready")[i % 2]})
+        self.assertEqual(len(calendar.get(e["id"])["history"]), calendar.HISTORY_MAX)
+
+    def test_note_limit_raises_and_writes_nothing(self):
+        e = calendar.create({"when": "2026-10-12"})
+        calendar.update(e["id"], 1, {"status": "ready"}, note="x" * calendar.MAX_NOTE)
+        with self.assertRaisesRegex(ValueError, "note is too long"):
+            calendar.update(e["id"], 2, {"status": "posted"}, note="x" * (calendar.MAX_NOTE + 1))
+        self.assertEqual(calendar.get(e["id"])["status"], "ready")
+        with self.assertRaises(ValueError):
+            calendar.update(e["id"], 2, {}, note=5)
+
+    def test_history_is_read_only(self):
+        e = calendar.create({"when": "2026-10-12", "history": [{"status": "posted"}]})
+        self.assertEqual(len(e["history"]), 1)
+        self.assertEqual(e["history"][0]["status"], "idea")
+        e = calendar.update(e["id"], 1, {"history": []})
+        self.assertEqual(len(e["history"]), 1)
+
+    def test_migration_of_old_and_malformed_entries(self):
+        os.makedirs(os.path.dirname(self.file))
+        old = {"id": "c_00000000aa", "rev": 3, "when": "2026-10-12", "duration_min": 0, "channel": "",
+               "title": "Old", "caption": "", "status": "draft", "project": None, "asset": None,
+               "created": "2026-10-01T00:00:00Z", "updated": "2026-10-01T00:00:00Z"}
+        bad = {**old, "id": "c_00000000bb", "history": [{"status": "nope"}, "junk", {"status": "idea", "note": ""}]}
+        worse = {**old, "id": "c_00000000cc", "history": "not a list"}
+        with open(self.file, "w", encoding="utf-8") as f:
+            json.dump({"schema": calendar.SCHEMA, "entries": [old, bad, worse]}, f)
+        got = {e["id"]: e for e in calendar.list_entries()}
+        self.assertEqual(got["c_00000000aa"]["history"], [])
+        self.assertEqual([r["status"] for r in got["c_00000000bb"]["history"]], ["idea"])
+        self.assertEqual(got["c_00000000cc"]["history"], [])
+        e = calendar.update("c_00000000aa", 3, {"status": "ready"}, note="ok")
+        self.assertEqual([(r["status"], r["note"]) for r in e["history"]], [("ready", "ok")])
+
+    def test_unscheduled_entries(self):
+        a = calendar.create({"when": None, "title": "Someday", "status": "draft"})
+        b = calendar.create({"when": "", "title": "Also"})
+        c = calendar.create({"when": "2026-10-12", "title": "Dated"})
+        self.assertIsNone(a["when"])
+        self.assertIsNone(b["when"])
+        self.assertEqual({e["id"] for e in calendar.list_entries(unscheduled=True)}, {a["id"], b["id"]})
+        self.assertEqual([e["id"] for e in calendar.list_entries("2026-10-01", "2026-10-31")], [c["id"]])
+        self.assertEqual(len(calendar.list_entries(to="2026-12-31")), 1)
+        self.assertEqual(len(calendar.list_entries()), 3)
+        ics = calendar.to_ics(calendar.list_entries(), "x", NOW)
+        self.assertEqual(len(parse_ics(ics)), 1)                   # no date, no VEVENT
+        self.assertEqual(calendar.to_row(a)[1], "")
+        a = calendar.update(a["id"], 1, {"when": "2026-10-20"})    # scheduling it
+        self.assertEqual([e["id"] for e in calendar.list_entries(unscheduled=True)], [b["id"]])
+        a = calendar.update(a["id"], 2, {"when": None})            # and back to the rail
+        self.assertIsNone(a["when"])
+        with self.assertRaisesRegex(ValueError, "when is required"):
+            calendar.create({"title": "no when key"})
+
+
 if __name__ == "__main__":
     unittest.main()
